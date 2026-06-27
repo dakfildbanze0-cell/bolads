@@ -1,0 +1,3 @@
+Substitua este arquivo com sua imagem da logo (logo.png) usando o explorador de arquivos.
+Certifique-se de que se chama 'logo.png' para que apareça corretamente no topo do aplicativo.
+O tamanho ideal é menor que 500px de largura e com fundo transparente.

@@ -1,0 +1,135 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "An advertisement for a product",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "string" },
+        "desc": { "type": "string" },
+        "img": { "type": "string" },
+        "images": { "type": "array" },
+        "badge": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "sellerPhone": { "type": "string" },
+        "sellerAvatar": { "type": "string" },
+        "location": { "type": "string" },
+        "category": { "type": "string" },
+        "subcategory": { "type": "string" },
+        "timeAgo": { "type": "string" },
+        "views": { "type": "string" },
+        "followers": { "type": "string" }
+      },
+      "required": ["name", "price", "category", "subcategory"]
+    },
+    "Chat": {
+      "type": "object",
+      "properties": {
+        "participants": { "type": "array" },
+        "lastMessage": { "type": "string" },
+        "unreadCount": { "type": "number" }
+      }
+    },
+    "Message": {
+      "type": "object",
+      "properties": {
+        "chatId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" }
+      }
+    },
+    "Notification": {
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "text": { "type": "string" },
+        "read": { "type": "boolean" },
+        "timestamp": { "type": "string" }
+      }
+    },
+    "Profile": {
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "bio": { "type": "string" },
+        "location": { "type": "string" }
+      }
+    },
+    "Follower": {
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "followerId": { "type": "string" }
+      }
+    },
+    "SavedPost": {
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "productId": { "type": "string" }
+      }
+    },
+    "Avaliacao": {
+      "title": "Avaliacao",
+      "description": "Uma avaliação de vendedor",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "vendedorId": { "type": "string" },
+        "estrelas": { "type": "number" },
+        "comentario": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "vendedorId", "estrelas"]
+    },
+    "Comentario": {
+      "title": "Comentario",
+      "description": "Um comentário de produto",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["productId", "authorId", "text", "createdAt"]
+    },
+    "Denuncia": {
+      "title": "Denuncia",
+      "description": "Uma denúncia de produto",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "reporterId": { "type": "string" },
+        "reporterName": { "type": "string" },
+        "reason": { "type": "string" },
+        "details": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["productId", "reporterId", "reason", "createdAt"]
+    }
+  },
+  "firestore": {
+    "products": { "schema": "Product" },
+    "chats": { "schema": "Chat" },
+    "messages": { "schema": "Message" },
+    "notifications": { "schema": "Notification" },
+    "profiles": { "schema": "Profile" },
+    "followers": { "schema": "Follower" },
+    "saved_posts": { "schema": "SavedPost" },
+    "avaliacoes": { "schema": "Avaliacao" },
+    "comentarios": { "schema": "Comentario" },
+    "denuncias": { "schema": "Denuncia" }
+  }
+}
