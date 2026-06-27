@@ -52,6 +52,7 @@ import OnboardingScreen from "./components/OnboardingScreen";
 import MenuScreen from "./components/MenuScreen";
 import BugsScreen from "./components/BugsScreen";
 import DenunciasScreen from "./components/DenunciasScreen";
+import InstallPWA from "./components/InstallPWA";
 
 const STOCK_ITEMS = [
   {
@@ -1450,6 +1451,7 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+      <InstallPWA />
     </div>
   );
 }

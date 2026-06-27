@@ -1,0 +1,21 @@
+{
+  "name": "Boladas - O Maior Marketplace",
+  "short_name": "Boladas",
+  "description": "Marketplace moderno para comprar e vender produtos em Moçambique.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#E91E63",
+  "icons": [
+    {
+      "src": "/logo-top.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo-top.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
