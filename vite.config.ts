@@ -11,7 +11,9 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['logo-top.png'],
+        injectRegister: 'script-defer',
+        manifestFilename: 'site.webmanifest',
+        includeAssets: ['logo-top.png', 'favicon-32x32.png', 'favicon-16x16.png', 'apple-touch-icon.png'],
         manifest: {
           name: 'Boladas - O Maior Marketplace',
           short_name: 'Boladas',
