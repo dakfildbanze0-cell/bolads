@@ -83,11 +83,23 @@ const STOCK_ITEMS = [
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [activeScreen, setActiveScreen] = useState("feed");
+  const [activeScreen, setActiveScreen] = useState(() => {
+    const hash = window.location.hash.replace("#", "");
+    const validScreens = [
+      "feed", "alerts", "chat", "profile", "showcase", "following", "settings", 
+      "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies", "search", "product_detail", "onboarding"
+    ];
+    if (validScreens.includes(hash)) return hash;
+    if (hash.startsWith("product/")) return "product_detail";
+    if (hash.startsWith("profile/")) return "profile";
+    return "feed";
+  });
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [allProfiles, setAllProfiles] = useState<any[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
   const authCheckedRef = useRef(false);
   const activeScreenRef = useRef(activeScreen);
@@ -134,17 +146,46 @@ export default function App() {
   useEffect(() => {
     activeScreenRef.current = activeScreen;
     if (activeScreen) {
-      window.location.hash = activeScreen;
+      if (activeScreen === "product_detail" && selectedProduct?.id) {
+        window.location.hash = `product/${selectedProduct.id}`;
+      } else if (activeScreen === "profile" && viewingProfileUserId) {
+        window.location.hash = `profile/${viewingProfileUserId}`;
+      } else {
+        window.location.hash = activeScreen;
+      }
     }
-  }, [activeScreen]);
+  }, [activeScreen, selectedProduct, viewingProfileUserId]);
 
   useEffect(() => {
-    const handleHashChange = () => {
+    const handleHashChange = async () => {
       const hash = window.location.hash.replace("#", "");
-      if (hash && hash !== activeScreenRef.current) {
+      if (hash && hash !== activeScreenRef.current && hash !== `product/${selectedProduct?.id}` && hash !== `profile/${viewingProfileUserId}`) {
+        if (hash.startsWith("product/")) {
+          const productId = hash.split("/")[1];
+          if (productId) {
+            try {
+              const { data, error } = await supabase.from('produtos').select('*').eq('id', productId).single();
+              if (data && !error) {
+                setSelectedProduct(data);
+                setActiveScreen("product_detail");
+                return;
+              }
+            } catch (err) {
+              console.error(err);
+            }
+          }
+        } else if (hash.startsWith("profile/")) {
+          const profileId = hash.split("/")[1];
+          if (profileId) {
+            setViewingProfileUserId(profileId);
+            setActiveScreen("profile");
+            return;
+          }
+        }
+        
         const validScreens = [
           "feed", "alerts", "chat", "profile", "showcase", "following", "settings", 
-          "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies"
+          "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies", "search", "product_detail", "onboarding"
         ];
         if (validScreens.includes(hash)) {
           setActiveScreen(hash);
@@ -157,19 +198,13 @@ export default function App() {
     // Set initial activeScreen from hash if present on mount
     const initialHash = window.location.hash.replace("#", "");
     if (initialHash) {
-      const validScreens = [
-        "feed", "alerts", "chat", "profile", "showcase", "following", "settings", 
-        "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies"
-      ];
-      if (validScreens.includes(initialHash)) {
-        setActiveScreen(initialHash);
-      }
+      handleHashChange();
     }
 
     return () => {
       window.removeEventListener("hashchange", handleHashChange);
     };
-  }, []);
+  }, [selectedProduct, viewingProfileUserId]);
 
   useEffect(() => {
     let mounted = true;
@@ -236,12 +271,12 @@ export default function App() {
     const initialHash = window.location.hash.replace("#", "");
     const validScreens = [
       "feed", "alerts", "chat", "profile", "showcase", "following", "settings", 
-      "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies"
+      "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies", "search", "product_detail", "onboarding"
     ];
-    if (initialHash && validScreens.includes(initialHash)) {
-      const isPublic = ["signin", "signup", "recovery", "onboarding", "policies"].includes(initialHash);
+    if (initialHash && (validScreens.includes(initialHash) || initialHash.startsWith("product/") || initialHash.startsWith("profile/"))) {
+      const isPublic = ["signin", "signup", "recovery", "onboarding", "policies"].includes(initialHash) || initialHash.startsWith("product/") || initialHash.startsWith("profile/");
       if (isLoggedIn || isPublic) {
-        setActiveScreen(initialHash);
+        // activeScreen is handled by handleHashChange, so we just hide splash
         setShowSplash(false);
         return;
       }
@@ -661,8 +696,6 @@ export default function App() {
     }
   };
 
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
   const [newProductImages, setNewProductImages] = useState<string[]>([]);
   const [newProductPhone, setNewProductPhone] = useState("+55 (11) 99888-7711");
   
