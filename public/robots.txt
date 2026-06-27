@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://boladas.com/sitemap.xml
+Sitemap: https://bolads.vercel.app/sitemap.xml

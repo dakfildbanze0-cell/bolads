@@ -123,7 +123,7 @@ export default function SignInScreen({
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="desenvolvedor@boladas.com"
+                placeholder="desenvolvedor@bolads.vercel.app"
                 className="bg-transparent border-none text-[16px] md:text-[18px] w-full focus:outline-none focus:ring-0 text-white placeholder:text-white/40 font-medium"
                 type="email"
                 required

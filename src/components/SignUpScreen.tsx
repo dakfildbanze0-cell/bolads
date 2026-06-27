@@ -135,7 +135,7 @@ export default function SignUpScreen({
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="vendas@boladas.com"
+                placeholder="vendas@bolads.vercel.app"
                 className="bg-transparent border-none text-[16px] md:text-[18px] w-full focus:outline-none focus:ring-0 text-white placeholder:text-white/40 font-medium"
                 type="email"
                 required

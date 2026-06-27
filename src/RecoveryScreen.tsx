@@ -52,7 +52,7 @@ export default function RecoveryScreen({ onBackToLogin }: { onBackToLogin: () =>
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="vendas@boladas.com"
+                placeholder="vendas@bolads.vercel.app"
                 className="bg-transparent border-none text-sm md:text-base w-full focus:outline-none focus:ring-0 text-white placeholder:text-white/40 font-medium"
                 type="email"
                 required
