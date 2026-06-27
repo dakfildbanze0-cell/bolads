@@ -80,6 +80,18 @@ export default function AlertsScreen({ onSelectProduct, products = [], onBack, c
 
     return () => {
       supabase.removeChannel(channel);
+      
+      // Auto-mark as read when leaving the screen
+      if (currentUser) {
+        supabase
+          .from('notifications')
+          .update({ read: true })
+          .eq('user_id', currentUser.id)
+          .eq('read', false)
+          .then(({ error }) => {
+            if (error) console.error("Error auto-marking alerts as read", error);
+          });
+      }
     };
   }, [currentUser]);
 
@@ -113,7 +125,19 @@ export default function AlertsScreen({ onSelectProduct, products = [], onBack, c
     }
   };
 
-  const handleAlertClick = (alert: Alert) => {
+  const handleAlertClick = async (alert: Alert) => {
+    // Marcar como lida ao clicar
+    if (!alert.read) {
+      try {
+        await supabase
+          .from('notifications')
+          .update({ read: true })
+          .eq('id', alert.id);
+      } catch (err) {
+        console.error("Erro ao marcar como lida:", err);
+      }
+    }
+
     if (alert.productName && onSelectProduct && products.length > 0) {
       const found = products.find(
         (p) => p.name.toLowerCase() === alert.productName?.toLowerCase()

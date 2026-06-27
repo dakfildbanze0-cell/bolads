@@ -33,7 +33,7 @@ export interface Conversation {
 
 // Check or create conversation with standard deterministic ID for 1-to-1 chats
 export async function createOrGetConversation(
-  sellerId: string | null,
+  seller_id: string | null,
   sellerName: string,
   sellerAvatar: string,
   productData?: any
@@ -46,13 +46,13 @@ export async function createOrGetConversation(
   let buyerAvatar = user.user_metadata?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80";
 
   // If no seller ID exists (e.g. static products), use a deterministic string based on their name
-  const finalSellerId = sellerId || `virtual_${sellerName.toLowerCase().replace(/\s+/g, "_")}`;
+  const final_seller_id = seller_id || `virtual_${sellerName.toLowerCase().replace(/\s+/g, "_")}`;
   
   let finalSellerName = sellerName;
   let finalSellerAvatar = sellerAvatar;
 
   // Deterministic chat ID based on both participants
-  const sortedIds = [buyerId, finalSellerId].sort();
+  const sortedIds = [buyerId, final_seller_id].sort();
   const conversaId = `conversa_${sortedIds[0]}_${sortedIds[1]}`;
 
   const { data: conv, error: fetchError } = await supabase
@@ -77,20 +77,20 @@ export async function createOrGetConversation(
   if (!conv) {
     const initialData = {
       id: conversaId,
-      participantes: [buyerId, finalSellerId],
+      participantes: [buyerId, final_seller_id],
       ultima_mensagem: "Conversa iniciada",
       data_ultima_atualizacao: new Date().toISOString(),
       nao_lidas: {
         [buyerId]: 0,
-        [finalSellerId]: 0
+        [final_seller_id]: 0
       },
       nomes_participantes: {
         [buyerId]: buyerName,
-        [finalSellerId]: finalSellerName
+        [final_seller_id]: finalSellerName
       },
       imagens_participantes: {
         [buyerId]: buyerAvatar,
-        [finalSellerId]: finalSellerAvatar
+        [final_seller_id]: finalSellerAvatar
       },
       produto: attachedProduct,
       criado_em: new Date().toISOString()
@@ -110,9 +110,9 @@ export async function createOrGetConversation(
     const nomes = conv.nomes_participantes || {};
     const imagens = conv.imagens_participantes || {};
     nomes[buyerId] = buyerName;
-    nomes[finalSellerId] = finalSellerName;
+    nomes[final_seller_id] = finalSellerName;
     imagens[buyerId] = buyerAvatar;
-    imagens[finalSellerId] = finalSellerAvatar;
+    imagens[final_seller_id] = finalSellerAvatar;
     
     updates.nomes_participantes = nomes;
     updates.imagens_participantes = imagens;
@@ -142,14 +142,14 @@ function formatTimestamp(timestamp: any): string {
 }
 
 export function getConversationsListener(
-  userId: string,
+  user_id: string,
   callback: (conversations: Conversation[]) => void
 ): () => void {
   const fetchConversations = async () => {
     const { data, error } = await supabase
       .from('chats')
       .select('*')
-      .contains('participantes', [userId]);
+      .contains('participantes', [user_id]);
 
     if (error) {
       console.error("Erro completo ao buscar conversas (getConversationsListener):", error);
@@ -158,7 +158,7 @@ export function getConversationsListener(
     
     if (data) {
       const list = data.map((conv) => {
-        const otherId = conv.participantes.find((id: string) => id !== userId) || "";
+        const otherId = conv.participantes.find((id: string) => id !== user_id) || "";
         const otherName = conv.nomes_participantes?.[otherId] || "Vendedor";
         const otherAvatar = conv.imagens_participantes?.[otherId] || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80";
 
@@ -168,7 +168,7 @@ export function getConversationsListener(
           ultimaMensagem: conv.ultima_mensagem || "",
           dataUltimaAtualizacao: conv.data_ultima_atualizacao,
           naoLidas: conv.nao_lidas || {},
-          unread: conv.nao_lidas?.[userId] || 0,
+          unread: conv.nao_lidas?.[user_id] || 0,
           nomesParticipantes: conv.nomes_participantes || {},
           imagensParticipantes: conv.imagens_participantes || {},
           name: otherName,
@@ -191,7 +191,7 @@ export function getConversationsListener(
       event: '*', 
       schema: 'public', 
       table: 'chats', 
-      filter: `participantes=cs.{${userId}}` 
+      filter: `participantes=cs.{${user_id}}` 
     }, () => {
       fetchConversations();
     })
@@ -308,7 +308,7 @@ export async function sendMessage(
   }
 }
 
-export async function markAsRead(conversaId: string, userId: string): Promise<void> {
+export async function markAsRead(conversaId: string, user_id: string): Promise<void> {
   const { data: conv, error: fetchError } = await supabase.from('chats').select('*').eq('id', conversaId).single();
   
   if (fetchError) {
@@ -318,8 +318,8 @@ export async function markAsRead(conversaId: string, userId: string): Promise<vo
 
   if (conv) {
     const unread = conv.nao_lidas || {};
-    if (unread[userId] > 0) {
-      unread[userId] = 0;
+    if (unread[user_id] > 0) {
+      unread[user_id] = 0;
       const { error: updateError } = await supabase.from('chats').update({ nao_lidas: unread }).eq('id', conversaId);
       if (updateError) {
         console.error("Erro ao zerar mensagens não lidas:", updateError);
@@ -330,7 +330,7 @@ export async function markAsRead(conversaId: string, userId: string): Promise<vo
   const { error: markError } = await supabase.from('mensagens')
     .update({ status: 'lida' })
     .eq('conversa_id', conversaId)
-    .neq('remetente_id', userId)
+    .neq('remetente_id', user_id)
     .neq('status', 'lida');
   
   if (markError) {
@@ -338,8 +338,8 @@ export async function markAsRead(conversaId: string, userId: string): Promise<vo
   }
 }
 
-async function triggerPushNotification(userId: string, text: string) {
+async function triggerPushNotification(user_id: string, text: string) {
   // Logic to simulate or trigger push
-  console.log(`[PUSH] Para ${userId}: ${text}`);
+  console.log(`[PUSH] Para ${user_id}: ${text}`);
 }
 

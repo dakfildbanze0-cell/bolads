@@ -314,3 +314,100 @@ begin
 end;
 $$;
 
+-- TABELA DE SEGUIDORES (FOLLOWS)
+create table if not exists public.follows (
+  id uuid default gen_random_uuid() primary key,
+  follower_id uuid references public.profiles(id) on delete cascade not null,
+  following_id uuid references public.profiles(id) on delete cascade not null,
+  created_at timestamp with time zone default now(),
+  unique(follower_id, following_id),
+  constraint no_self_follow check (follower_id <> following_id)
+);
+
+-- HABILITAR RLS PARA SEGUIDORES
+alter table public.follows enable row level security;
+
+-- POLÍTICAS DE SEGUIDORES
+create policy "Qualquer um pode ver as relações de seguir" on public.follows for select using (true);
+create policy "Usuários autenticados podem seguir outros" on public.follows for insert with check (auth.uid() = follower_id);
+create policy "Usuários podem deixar de seguir" on public.follows for delete using (auth.uid() = follower_id);
+
+
+-- TABELA DE REGISTRO DE ATIVIDADES / AÇÕES (ACTIVITY LOGS)
+create table if not exists public.activity_logs (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  action_type text not null, -- Ex: 'login', 'create_product', 'follow_seller', 'send_message', etc.
+  description text not null, -- Descrição amigável da ação realizada
+  metadata jsonb default '{}'::jsonb, -- Detalhes adicionais sobre a ação em formato JSON
+  created_at timestamp with time zone default now()
+);
+
+-- HABILITAR RLS PARA LOGS DE ATIVIDADE
+alter table public.activity_logs enable row level security;
+
+-- POLÍTICAS DE LOGS DE ATIVIDADE
+create policy "Usuários podem ver seus próprios logs de atividade" on public.activity_logs for select using (auth.uid() = user_id);
+create policy "Usuários autenticados podem inserir seus próprios logs" on public.activity_logs for insert with check (auth.uid() = user_id);
+
+
+-- TABELA DE DEFINIÇÕES LIGADA AO PERFIL (CONFIGURAÇÕES DO USUÁRIO)
+create table if not exists public.definicoes (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null unique,
+  theme_mode text default 'escuro',
+  font_size text default 'grande',
+  language text default 'Português',
+  notifications_enabled boolean default true,
+  sound_enabled boolean default true,
+  vibration_enabled boolean default true,
+  show_online boolean default true,
+  show_last_seen boolean default true,
+  read_confirmation boolean default true,
+  auto_renew boolean default true,
+  auto_highlight boolean default false,
+  two_factor boolean default false,
+  pin_code text default '1408',
+  profile_visibility text default 'Todos',
+  messages_visibility text default 'Todos',
+  phone_visibility text default 'Seguidores',
+  blocked_users jsonb default '[]'::jsonb,
+  sessions jsonb default '[]'::jsonb,
+  settings jsonb default '{}'::jsonb, -- Armazena todas as outras configurações em formato JSON
+  updated_at timestamp with time zone default now()
+);
+
+-- COMANDOS ALTER TABLE PARA GARANTIR QUE AS COLUNAS EXISTAM SE A TABELA JÁ FOI CRIADA ANTES
+alter table public.definicoes add column if not exists two_factor boolean default false;
+alter table public.definicoes add column if not exists pin_code text default '1408';
+alter table public.definicoes add column if not exists profile_visibility text default 'Todos';
+alter table public.definicoes add column if not exists messages_visibility text default 'Todos';
+alter table public.definicoes add column if not exists phone_visibility text default 'Seguidores';
+alter table public.definicoes add column if not exists blocked_users jsonb default '[]'::jsonb;
+alter table public.definicoes add column if not exists sessions jsonb default '[]'::jsonb;
+
+-- HABILITAR RLS PARA TABELA DE DEFINIÇÕES
+alter table public.definicoes enable row level security;
+
+-- POLÍTICAS DE ACESSO PARA TABELA DE DEFINIÇÕES
+create policy "Usuários podem ver suas próprias definições" on public.definicoes for select using (auth.uid() = user_id);
+create policy "Usuários podem atualizar suas próprias definições" on public.definicoes for update using (auth.uid() = user_id);
+create policy "Usuários podem inserir suas próprias definições" on public.definicoes for insert with check (auth.uid() = user_id);
+
+-- TRIGGER AUTOMÁTICO PARA CRIAR DEFINIÇÕES AO CRIAR UM PERFIL (PROFILES)
+create or replace function public.handle_new_user_settings()
+returns trigger as $$
+begin
+  insert into public.definicoes (user_id)
+  values (new.id)
+  on conflict (user_id) do nothing;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create or replace trigger on_profile_created_setup_settings
+  after insert on public.profiles
+  for each row execute procedure public.handle_new_user_settings();
+
+
+

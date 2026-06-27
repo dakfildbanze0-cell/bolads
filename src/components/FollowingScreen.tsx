@@ -1,11 +1,14 @@
-import { useState } from "react";
-import { Search, Sliders, CheckSquare } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Sliders, CheckSquare, User, Eye, Heart } from "lucide-react";
+import { supabase } from "../lib/supabase";
 
 interface FollowingScreenProps {
   products?: any[];
   followedSellers?: Record<string, boolean>;
-  onToggleFollow?: (sellerName: string) => void;
+  onToggleFollow?: (sellerNameOrId: string) => void;
   onSelectProduct?: (product: any) => void;
+  onViewSellerProfile?: (sellerId: string) => void;
+  currentUser?: any;
 }
 
 export default function FollowingScreen({
@@ -13,58 +16,98 @@ export default function FollowingScreen({
   followedSellers = {},
   onToggleFollow,
   onSelectProduct,
+  onViewSellerProfile,
+  currentUser,
 }: FollowingScreenProps) {
   const [query, setQuery] = useState("");
+  const [allProfiles, setAllProfiles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Derive unique sellers from products list
-  const derivedSellers = Array.from(new Set(products.map(p => p.sellerName)))
-    .map(name => {
-      const p = products.find(prod => prod.sellerName === name);
-      return {
-        id: name,
-        name: name,
-        img: p?.sellerAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80",
-        vol: "Vol: $1.2M",
-        rating: "Avaliação: 4.9",
-        badge: "Pro",
-        indicator: "bg-white",
-      };
-    });
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, name, avatar_url, location, followed_sellers");
+        if (data) {
+          setAllProfiles(data);
+        }
+      } catch (err) {
+        console.error("Erro Ao Buscar Perfis Na Tela Seguindo:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const toggleFollow = (name: string) => {
-    if (onToggleFollow) {
-      onToggleFollow(name);
-    }
+    fetchProfiles();
+
+    // Sincronização em tempo real das alterações em perfis (seguidores/seguindo)
+    const channel = supabase
+      .channel("following_screen_profiles_realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+        fetchProfiles();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const formatText = (str: string) => {
+    if (!str) return "";
+    return str
+      .split(/\s+/)
+      .map((word) => {
+        if (!word) return "";
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(" ");
   };
 
-  const filteredSellers = derivedSellers.filter((s) =>
-    s.name.toLowerCase().includes(query.toLowerCase())
-  );
+  const getFollowersCount = (profileName: string, profileId: string) => {
+    return allProfiles.filter((p) => {
+      const followed = p.followed_sellers || {};
+      return followed[profileName] === true || followed[profileId] === true;
+    }).length;
+  };
 
-  const nonFollowedSellers = filteredSellers.filter(
-    (s) => !followedSellers[s.name]
-  );
+  const getLastProduct = (sellerName: string, sellerId: string) => {
+    // Filtrar produtos deste vendedor
+    const sellerProducts = products.filter(
+      (p) => p.seller_id === sellerId || p.sellerName === sellerName
+    );
+    return sellerProducts[0] || null;
+  };
 
-  // Filter posts of sellers that the user currently follows
-  const followedPosts = products.filter((p) => {
-    // If the seller name is in followedSellers and is true
-    return followedSellers[p.sellerName] === true;
+  // Vendedores seguidos
+  const followedSellersList = allProfiles.filter((p) => {
+    if (currentUser && p.id === currentUser.id) return false;
+    const isFollowing = followedSellers[p.name] === true || followedSellers[p.id] === true;
+    return isFollowing && p.name?.toLowerCase().includes(query.toLowerCase());
+  });
+
+  // Vendedores recomendados (para seguir)
+  const recommendedSellersList = allProfiles.filter((p) => {
+    if (currentUser && p.id === currentUser.id) return false;
+    const isFollowing = followedSellers[p.name] === true || followedSellers[p.id] === true;
+    return !isFollowing && p.name?.toLowerCase().includes(query.toLowerCase());
   });
 
   return (
-    <div className="flex flex-col gap-[8px] p-[8px] w-full animate-fade-in text-white">
+    <div className="flex flex-col gap-[8px] p-[8px] w-full animate-fade-in text-white bg-zinc-900 min-h-screen">
       {/* Header Section - Max 8px spacing */}
       <section className="py-[4px] flex flex-col gap-[4px]">
-        <h2 className="font-chivo text-[20px] md:text-[32px] font-extrabold leading-none text-white">
+        <h2 className="font-chivo text-[18px] md:text-[24px] font-black leading-none text-white">
           Seguindo
         </h2>
-        <p className="font-hanken text-[11px] md:text-[13px] text-neutral-400 font-extrabold leading-none">
-          Postagens e atualizações de quem você segue
+        <p className="font-hanken text-[11px] text-neutral-400 font-bold leading-none">
+          Postagens E Atualizações De Quem Tu Segues
         </p>
       </section>
 
-      {/* Search / Filter bar - Max 8px separation, background integration */}
-      <div className="flex gap-[8px] mb-[4px] items-center">
+      {/* Search Bar - Max 8px separation */}
+      <div className="flex gap-[8px] items-center bg-zinc-950/40 p-[4px] rounded-[8px] border border-zinc-800/10">
         <div className="relative flex-1 bg-transparent">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
             <Search className="w-4 h-4 text-neutral-400" />
@@ -72,176 +115,234 @@ export default function FollowingScreen({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-transparent pl-9 pr-3 py-2 text-sm text-white placeholder:text-neutral-500 outline-none border-none font-hanken"
-            placeholder="Filtrar vendedores..."
+            className="w-full bg-transparent pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-neutral-500 outline-none border-none font-hanken"
+            placeholder="Filtrar Vendedores..."
             type="text"
           />
         </div>
-        <button className="bg-transparent px-2 flex items-center justify-center text-white outline-none border-none">
+        <button className="bg-transparent px-2 flex items-center justify-center text-white outline-none border-none cursor-pointer">
           <Sliders className="w-4 h-4 text-white" />
         </button>
       </div>
 
-      {/* Grid of Sellers not followed - Max 8px gap between grid cards */}
-      <div className="flex flex-col gap-[4px]">
-        <h3 className="font-chivo text-[14px] md:text-[16px] font-black text-neutral-200">
-          Vendedores para seguir
+      {/* SECTION 1: Vendedores Seguidos (Requisito 4) */}
+      <div className="flex flex-col gap-[6px]">
+        <h3 className="font-chivo text-[12px] font-bold text-neutral-300">
+          Vendedores Que Segues
         </h3>
-      </div>
 
-      {nonFollowedSellers.length === 0 ? (
-        <div className="flex items-center justify-center p-[12px] text-center rounded-[8px] border border-zinc-900 border-dashed">
-          <p className="font-hanken text-[12px] text-neutral-400">
-            Você já segue todos os vendedores disponíveis!
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-[8px] w-full">
-          {nonFollowedSellers.map((s) => {
-            const isFollowing = followedSellers[s.name] === true;
-
-            return (
-              <div
-                key={s.id}
-                className={`flex items-center justify-between gap-[8px] p-[8px] rounded-[8px] transition-all ${
-                  !isFollowing ? "opacity-90" : ""
-                }`}
-              >
-                <div className="flex items-center gap-[8px] min-w-0 pr-[4px]">
-                  <div className="relative w-10 h-10 flex-shrink-0 rounded-full overflow-hidden">
-                    <img
-                      alt={s.name}
-                      className="w-full h-full object-cover"
-                      src={s.img}
-                    />
-                    {isFollowing && s.indicator && (
-                      <div
-                        className={`absolute bottom-0 right-0 w-2.5 h-2.5 ${s.indicator} rounded-full`}
-                      ></div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-baseline gap-[4px] leading-tight">
-                      <span className="font-hanken text-[14px] font-bold text-white truncate">
-                        {s.name}
-                      </span>
-                      {s.badge && (
-                        <span className="font-chivo text-[8px] text-white font-black bg-white/20 px-1 rounded-[2px]">
-                          {s.badge}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex gap-[4px] items-center text-neutral-400 font-hanken text-[10px] leading-none mt-0.5">
-                      <span>{s.vol}</span>
-                      <span className="w-1 h-1 bg-neutral-600 rounded-full"></span>
-                      <span>{s.rating}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => toggleFollow(s.name)}
-                  className={`font-hanken text-[11px] font-extrabold px-3 py-1.5 transition-all rounded-[6px] active:scale-95 cursor-pointer hover:opacity-90 leading-none ${
-                    isFollowing
-                      ? "bg-white text-black font-black"
-                      : "bg-transparent text-white border border-zinc-700"
-                  }`}
-                >
-                  {isFollowing ? "Seguindo" : "Seguir"}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Publications section divider - Max 8px gap */}
-      <div className="flex flex-col gap-[4px] mt-[8px]">
-        <h3 className="font-chivo text-[14px] md:text-[16px] font-black text-neutral-200">
-          Publicações de quem você segue
-        </h3>
-      </div>
-
-      {/* Dynamic feed of followed seller posts - Max 8px gap between cards */}
-      <div className="flex flex-col gap-[8px] w-full">
-        {followedPosts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-[24px] text-center gap-[8px] rounded-[8px]">
-            <CheckSquare className="w-8 h-8 text-neutral-600" />
-            <p className="font-hanken text-[13px] text-neutral-400 max-w-[280px] mx-auto">
-              Nenhuma publicação disponível. Siga vendedores ativos acima para ver os anúncios deles em tempo real!
+        {loading ? (
+          <div className="flex justify-center py-[20px]">
+            <span className="text-xs text-neutral-400 animate-pulse font-hanken">Carregando Vendedores...</span>
+          </div>
+        ) : followedSellersList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-[16px] text-center rounded-[8px] border border-zinc-800/30 border-dashed gap-[4px]">
+            <Heart className="w-5 h-5 text-neutral-600" />
+            <p className="font-hanken text-[11px] text-neutral-500">
+              Ainda Não Segues Nenhum Vendedor Ativo.
             </p>
           </div>
         ) : (
-          followedPosts.map((p) => (
-            <div
-              key={p.id}
-              className="flex flex-col md:flex-row gap-[8px] p-[8px] rounded-[8px] hover:bg-zinc-900/20 transition-colors"
-            >
-              {/* Product Post Thumbnail Image */}
-              <div className="relative w-full md:w-36 aspect-video md:aspect-square flex-shrink-0 overflow-hidden rounded-[6px] bg-black">
-                <img
-                  alt={p.name}
-                  className="w-full h-full object-cover"
-                  src={p.img}
-                />
-                {p.badge && (
-                  <span className="absolute top-[4px] right-[4px] bg-black/80 text-white font-chivo text-[9px] font-bold px-1.5 py-0.5 rounded-[2px]">
-                    {p.badge}
-                  </span>
-                )}
-              </div>
+          <div className="flex flex-col gap-[8px] w-full">
+            {followedSellersList.map((seller) => {
+              const followersCount = getFollowersCount(seller.name, seller.id);
+              const lastProduct = getLastProduct(seller.name, seller.id);
 
-              {/* Product Post Details */}
-              <div className="flex-1 flex flex-col justify-between min-w-0 p-[2px] gap-[6px]">
-                <div className="flex flex-col gap-[4px]">
-                  {/* Seller info row */}
-                  <div className="flex items-center gap-[6px]">
-                    <img
-                      alt={p.sellerName}
-                      className="w-5 h-5 rounded-full object-cover"
-                      src={p.sellerAvatar}
-                    />
-                    <span className="font-hanken text-[12px] font-extrabold text-neutral-300 truncate">
-                      {p.sellerName}
-                    </span>
-                    <span className="text-zinc-500 text-[10px]">
-                      • {p.timeAgo}
-                    </span>
+              return (
+                <div
+                  key={seller.id}
+                  className="flex flex-col gap-[6px] p-[8px] bg-zinc-950/30 rounded-[8px] border border-zinc-800/10 hover:border-zinc-800/30 transition-all"
+                >
+                  {/* Seller Header Row */}
+                  <div className="flex items-center justify-between gap-[8px]">
+                    <div className="flex items-center gap-[8px] min-w-0">
+                      <img
+                        alt={seller.name}
+                        className="w-9 h-9 rounded-full object-cover shrink-0"
+                        src={seller.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-hanken text-[13px] font-bold text-white truncate leading-tight">
+                          {formatText(seller.name)}
+                        </span>
+                        <span className="font-hanken text-[10px] text-zinc-500 leading-none mt-0.5">
+                          {followersCount} {followersCount === 1 ? "Seguidor" : "Seguidores"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action buttons with max 8px spacing */}
+                    <div className="flex items-center gap-[6px] shrink-0">
+                      <button
+                        onClick={() => onViewSellerProfile?.(seller.id)}
+                        className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-white font-hanken text-[10px] font-bold rounded-[6px] transition-all active:scale-95 cursor-pointer border-none"
+                      >
+                        Ver Perfil
+                      </button>
+                      <button
+                        onClick={() => onToggleFollow?.(seller.id)}
+                        className="px-2.5 py-1 bg-rose-950/40 hover:bg-rose-900/30 text-rose-300 font-hanken text-[10px] font-bold rounded-[6px] transition-all active:scale-95 cursor-pointer border border-rose-900/20"
+                      >
+                        Deixar De Seguir
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Title and price row */}
-                  <div className="flex justify-between items-baseline gap-[8px]">
-                    <h4 className="font-chivo text-[12px] xs:text-[14px] font-extrabold text-white truncate">
-                      {p.name}
-                    </h4>
-                    <span className="font-chivo text-[12px] xs:text-[14px] font-extrabold text-white shrink-0">
+                  {/* Last Product Card */}
+                  {lastProduct ? (
+                    <div 
+                      onClick={() => onSelectProduct?.(lastProduct)}
+                      className="flex gap-[8px] p-[6px] bg-zinc-900/40 rounded-[6px] border border-zinc-850 cursor-pointer hover:bg-zinc-900/65 transition-colors items-center"
+                    >
+                      <img
+                        src={lastProduct.img}
+                        alt={lastProduct.name}
+                        className="w-10 h-10 object-cover rounded-[4px] shrink-0"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="flex-1 min-w-0 flex flex-col gap-[2px]">
+                        <span className="text-[9px] text-zinc-400 font-bold font-hanken uppercase tracking-wider leading-none">Último Anúncio</span>
+                        <h4 className="font-chivo text-[11px] font-extrabold text-white truncate leading-tight">
+                          {formatText(lastProduct.name)}
+                        </h4>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <span className="font-chivo text-[11px] font-extrabold text-white block">
+                          {lastProduct.price}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-[4px] px-[6px] bg-zinc-900/20 rounded-[6px] border border-zinc-850/50">
+                      <span className="font-hanken text-[10px] text-zinc-500">Este Vendedor Ainda Não Tem Anúncios Publicados.</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 2: Vendedores recomendados */}
+      <div className="flex flex-col gap-[6px] mt-2">
+        <h3 className="font-chivo text-[12px] font-bold text-neutral-300">
+          Vendedores Recomendados
+        </h3>
+
+        {loading ? (
+          <div className="flex justify-center py-[20px]">
+            <span className="text-xs text-neutral-400 animate-pulse font-hanken">Carregando Sugestões...</span>
+          </div>
+        ) : recommendedSellersList.length === 0 ? (
+          <div className="flex items-center justify-center p-[12px] text-center rounded-[8px] border border-zinc-800/30 border-dashed">
+            <p className="font-hanken text-[11px] text-neutral-500">
+              Não Há Outros Vendedores Para Exibir.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-[8px] w-full">
+            {recommendedSellersList.slice(0, 4).map((seller) => {
+              const followersCount = getFollowersCount(seller.name, seller.id);
+
+              return (
+                <div
+                  key={seller.id}
+                  className="flex items-center justify-between gap-[8px] p-[8px] bg-zinc-950/20 rounded-[8px] border border-zinc-800/10"
+                >
+                  <div className="flex items-center gap-[8px] min-w-0">
+                    <img
+                      alt={seller.name}
+                      className="w-8 h-8 rounded-full object-cover shrink-0"
+                      src={seller.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-hanken text-[12px] font-bold text-white truncate leading-tight">
+                        {formatText(seller.name)}
+                      </span>
+                      <span className="font-hanken text-[9px] text-neutral-500 leading-none mt-0.5">
+                        {followersCount} {followersCount === 1 ? "Seguidor" : "Seguidores"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onToggleFollow?.(seller.id)}
+                    className="font-hanken text-[10px] font-bold px-3 py-1 bg-white text-zinc-950 rounded-[6px] active:scale-95 hover:opacity-90 transition-all cursor-pointer border-none"
+                  >
+                    Seguir
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 3: Publicações de quem segue */}
+      <div className="flex flex-col gap-[6px] mt-2">
+        <h3 className="font-chivo text-[12px] font-bold text-neutral-300">
+          Publicações Recentes De Quem Segues
+        </h3>
+
+        {(() => {
+          const followedPosts = products.filter((p) => {
+            return followedSellers[p.sellerName] === true || (p.seller_id && followedSellers[p.seller_id] === true);
+          });
+
+          if (followedPosts.length === 0) {
+            return (
+              <div className="flex flex-col items-center justify-center p-[20px] text-center gap-[4px] rounded-[8px] border border-zinc-800/30 border-dashed">
+                <CheckSquare className="w-6 h-6 text-neutral-600" />
+                <p className="font-hanken text-[11px] text-neutral-500 max-w-[240px]">
+                  Nenhum Anúncio Ativo. Segue Vendedores Ativos No Topo Para Veres Os Anúncios Deles Aqui.
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex flex-col gap-[8px] w-full">
+              {followedPosts.map((p) => (
+                <div
+                  key={p.id}
+                  onClick={() => onSelectProduct?.(p)}
+                  className="flex gap-[8px] p-[8px] rounded-[8px] bg-zinc-950/20 hover:bg-zinc-950/40 border border-zinc-800/5 cursor-pointer transition-all"
+                >
+                  <img
+                    alt={p.name}
+                    className="w-16 h-16 object-cover rounded-[6px] shrink-0"
+                    src={p.img}
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="flex-1 min-w-0 flex flex-col justify-between p-[2px]">
+                    <div className="flex flex-col gap-[2px]">
+                      <div className="flex items-center gap-[4px]">
+                        <img
+                          alt={p.sellerName}
+                          className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
+                          src={p.sellerAvatar}
+                          referrerPolicy="no-referrer"
+                        />
+                        <span className="font-hanken text-[10px] font-bold text-zinc-400 truncate">
+                          {formatText(p.sellerName)}
+                        </span>
+                      </div>
+                      <h4 className="font-chivo text-[12px] font-extrabold text-white truncate leading-tight mt-0.5">
+                        {formatText(p.name)}
+                      </h4>
+                    </div>
+                    <span className="font-chivo text-[12px] font-extrabold text-white block mt-1">
                       {p.price}
                     </span>
                   </div>
-
-                  {/* Product small descriptions */}
-                  <p className="text-neutral-400 font-hanken text-[12px] leading-tight line-clamp-2">
-                    {p.desc}
-                  </p>
                 </div>
-
-                {/* Footer views & action wrapper */}
-                <div className="flex items-center justify-between gap-[8px] mt-[4px]">
-                  <span className="font-hanken text-[10px] text-zinc-500 lowercase">
-                    {p.views} visualizações • {p.location}
-                  </span>
-                  <button
-                    onClick={() => onSelectProduct?.(p)}
-                    className="px-4 py-1.5 bg-white hover:bg-neutral-200 text-black font-hanken text-[11px] font-black rounded-[8px] transition-all active:scale-95 cursor-pointer leading-none"
-                  >
-                    Ver Produto
-                  </button>
-                </div>
-              </div>
+              ))}
             </div>
-          ))
-        )}
+          );
+        })()}
       </div>
     </div>
   );

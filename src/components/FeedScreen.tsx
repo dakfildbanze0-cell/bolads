@@ -21,7 +21,7 @@ interface FeedScreenProps {
   followedSellers?: Record<string, boolean>;
   onToggleFollow?: (sellerName: string) => void;
   bookmarks?: Record<string, boolean>;
-  onToggleBookmark?: (productId: string) => void;
+  onToggleBookmark?: (product_id: string) => void;
 }
 
 export default function FeedScreen({ 

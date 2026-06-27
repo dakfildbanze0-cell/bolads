@@ -20,7 +20,8 @@ import {
   Volume2,
   RefreshCw,
   Send,
-  UserCheck
+  UserCheck,
+  X
 } from "lucide-react";
 
 import { supabase } from "../lib/supabase";
@@ -31,6 +32,7 @@ interface SettingsScreenProps {
   initialSubView?: string | null;
   userProfile?: any;
   user?: any;
+  onNavigate?: (screenName: string) => void;
 }
 
 interface SettingsState {
@@ -122,7 +124,7 @@ const DEFAULT_SETTINGS: SettingsState = {
   dataSaving: false
 };
 
-export default function SettingsScreen({ onBack, initialSubView = null, userProfile, user }: SettingsScreenProps) {
+export default function SettingsScreen({ onBack, initialSubView = null, userProfile, user, onNavigate }: SettingsScreenProps) {
   const [settings, setSettings] = useState<SettingsState>(() => {
     const saved = localStorage.getItem("boladas_settings");
     let state = DEFAULT_SETTINGS;
@@ -153,20 +155,167 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
   const [tempBlockUser, setTempBlockUser] = useState("");
   const [supportMessage, setSupportMessage] = useState("");
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<string | null>(null);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const getDeviceName = () => {
+    const ua = navigator.userAgent;
+    if (/android/i.test(ua)) return "Telemóvel Android";
+    if (/iPad|iPhone|iPod/.test(ua)) return "Telemóvel iPhone";
+    if (/Macintosh/i.test(ua)) return "Computador MacBook";
+    if (/Windows/i.test(ua)) return "Computador Windows PC";
+    if (/Linux/i.test(ua)) return "Computador Linux PC";
+    return "Navegador web";
+  };
+
+  const verifyPIN = (actionDescription: string): boolean => {
+    if (!settings.pinCode) {
+      return true;
+    }
+    const entered = prompt(`Por favor, introduza o seu PIN de segurança actual de 4 dígitos para autorizar:\n${actionDescription}`);
+    if (entered === settings.pinCode) {
+      return true;
+    }
+    if (entered === null) {
+      return false;
+    }
+    showToast("PIN de segurança incorrecto! Operação cancelada");
+    return false;
+  };
+
+  useEffect(() => {
+    const currentDeviceName = getDeviceName();
+    const hasCurrent = settings.sessions.some(s => s.id === "s1" && s.device === currentDeviceName);
+    if (!hasCurrent) {
+      const updatedSessions = settings.sessions.map(s => 
+        s.id === "s1" ? { ...s, device: currentDeviceName } : s
+      );
+      if (!settings.sessions.some(s => s.id === "s1")) {
+        updatedSessions.unshift({ id: "s1", device: currentDeviceName, lastActive: "Activo agora" });
+      }
+      setSettings(prev => ({ ...prev, sessions: updatedSessions }));
+    }
+  }, [settings.sessions]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const loadDefinicoes = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('definicoes')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Erro ao carregar da tabela definicoes:", error);
+          return;
+        }
+
+        if (data) {
+          const dbSettings = data.settings || {};
+          setSettings((prev) => ({
+            ...prev,
+            ...dbSettings,
+            themeMode: data.theme_mode || dbSettings.themeMode || prev.themeMode,
+            fontSizeMenu: data.font_size || dbSettings.fontSizeMenu || prev.fontSizeMenu,
+            language: data.language || dbSettings.language || prev.language,
+            notifyMessages: data.notifications_enabled !== undefined ? data.notifications_enabled : (dbSettings.notifyMessages !== undefined ? dbSettings.notifyMessages : prev.notifyMessages),
+            soundEnabled: data.sound_enabled !== undefined ? data.sound_enabled : (dbSettings.soundEnabled !== undefined ? dbSettings.soundEnabled : prev.soundEnabled),
+            vibrationEnabled: data.vibration_enabled !== undefined ? data.vibration_enabled : (dbSettings.vibrationEnabled !== undefined ? dbSettings.vibrationEnabled : prev.vibrationEnabled),
+            showOnline: data.show_online !== undefined ? data.show_online : (dbSettings.showOnline !== undefined ? dbSettings.showOnline : prev.showOnline),
+            showLastSeen: data.show_last_seen !== undefined ? data.show_last_seen : (dbSettings.showLastSeen !== undefined ? dbSettings.showLastSeen : prev.showLastSeen),
+            readConfirmation: data.read_confirmation !== undefined ? data.read_confirmation : (dbSettings.readConfirmation !== undefined ? dbSettings.readConfirmation : prev.readConfirmation),
+            autoRenew: data.auto_renew !== undefined ? data.auto_renew : (dbSettings.autoRenew !== undefined ? dbSettings.autoRenew : prev.autoRenew),
+            autoHighlight: data.auto_highlight !== undefined ? data.auto_highlight : (dbSettings.autoHighlight !== undefined ? dbSettings.autoHighlight : prev.autoHighlight),
+            twoFactor: data.two_factor !== undefined ? data.two_factor : (dbSettings.twoFactor !== undefined ? dbSettings.twoFactor : prev.twoFactor),
+            pinCode: data.pin_code || dbSettings.pinCode || prev.pinCode,
+            profileVisibility: data.profile_visibility || dbSettings.profileVisibility || prev.profileVisibility,
+            messagesVisibility: data.messages_visibility || dbSettings.messagesVisibility || prev.messagesVisibility,
+            phoneVisibility: data.phone_visibility || dbSettings.phoneVisibility || prev.phoneVisibility,
+            blockedUsers: data.blocked_users || dbSettings.blockedUsers || prev.blockedUsers,
+            sessions: data.sessions || dbSettings.sessions || prev.sessions,
+          }));
+        } else {
+          const initialRecord = {
+            user_id: user.id,
+            theme_mode: settings.themeMode,
+            font_size: settings.fontSizeMenu,
+            language: settings.language,
+            notifications_enabled: settings.notifyMessages,
+            sound_enabled: settings.soundEnabled,
+            vibration_enabled: settings.vibrationEnabled,
+            show_online: settings.showOnline,
+            show_last_seen: settings.showLastSeen,
+            read_confirmation: settings.readConfirmation,
+            auto_renew: settings.autoRenew,
+            auto_highlight: settings.autoHighlight,
+            two_factor: settings.twoFactor,
+            pin_code: settings.pinCode,
+            profile_visibility: settings.profileVisibility,
+            messages_visibility: settings.messagesVisibility,
+            phone_visibility: settings.phoneVisibility,
+            blocked_users: settings.blockedUsers,
+            sessions: settings.sessions,
+            settings: settings,
+          };
+          await supabase.from('definicoes').insert(initialRecord);
+        }
+      } catch (err) {
+        console.error("Erro geral ao carregar da tabela definicoes:", err);
+      }
+    };
+
+    loadDefinicoes();
+  }, [user]);
 
   useEffect(() => {
     localStorage.setItem("boladas_settings", JSON.stringify(settings));
     if (user) {
       const syncTimeout = setTimeout(() => {
+        const payload = {
+          theme_mode: settings.themeMode,
+          font_size: settings.fontSizeMenu,
+          language: settings.language,
+          notifications_enabled: settings.notifyMessages,
+          sound_enabled: settings.soundEnabled,
+          vibration_enabled: settings.vibrationEnabled,
+          show_online: settings.showOnline,
+          show_last_seen: settings.showLastSeen,
+          read_confirmation: settings.readConfirmation,
+          auto_renew: settings.autoRenew,
+          auto_highlight: settings.autoHighlight,
+          two_factor: settings.twoFactor,
+          pin_code: settings.pinCode,
+          profile_visibility: settings.profileVisibility,
+          messages_visibility: settings.messagesVisibility,
+          phone_visibility: settings.phoneVisibility,
+          blocked_users: settings.blockedUsers,
+          sessions: settings.sessions,
+          settings: settings,
+          updated_at: new Date().toISOString()
+        };
+
+        // Sync fully to definicoes table
         supabase
-          .from('profiles')
-          .update({ settings })
-          .eq('id', user.id)
+          .from('definicoes')
+          .upsert({ user_id: user.id, ...payload }, { onConflict: 'user_id' })
           .then(({ error }) => {
-            if (error) console.error("Erro ao sincronizar definições:", error);
+            if (error) {
+              console.error("Erro ao sincronizar definições na tabela definicoes:", error);
+            } else {
+              // Also sync profiles for complete consistency
+              supabase
+                .from('profiles')
+                .update({ settings })
+                .eq('id', user.id)
+                .then(({ error: profileError }) => {
+                  if (profileError) console.error("Erro ao sincronizar definições no perfil:", profileError);
+                });
+            }
           });
       }, 1000);
       return () => clearTimeout(syncTimeout);
@@ -174,8 +323,13 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
   }, [settings, user]);
 
   useEffect(() => {
-    if (userProfile && userProfile.settings) {
-      setSettings(prev => ({ ...prev, ...userProfile.settings, fullName: userProfile.name || prev.fullName, avatar: userProfile.avatar || prev.avatar }));
+    if (userProfile) {
+      setSettings(prev => ({ 
+        ...prev, 
+        ...(userProfile.settings || {}), 
+        fullName: userProfile.name || prev.fullName, 
+        avatar: userProfile.avatar_url || userProfile.avatar || prev.avatar 
+      }));
     }
   }, [userProfile]);
 
@@ -637,18 +791,29 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
             <div className="flex flex-col gap-[8px]">
               
               <div className="flex flex-col gap-[8px] bg-zinc-900 p-[8px] rounded-[8px]">
-                <span className="text-[14px] font-normal text-white uppercase tracking-wider px-1">
+                <span className="text-[14px] font-normal text-white px-1">
                   Login e credenciais
                 </span>
                 
                 <div className="flex flex-col gap-[8px]">
                   <button 
-                    onClick={() => {
-                      const currPass = prompt("Insira senha actual");
-                      if (currPass) {
-                        const newPass = prompt("Insira nova senha segura");
-                        if (newPass) {
-                          showToast("Senha técnica alterada com sucesso");
+                    onClick={async () => {
+                      if (!verifyPIN("Alterar senha técnica")) return;
+                      const newPass = prompt("Insira a nova senha segura (mínimo de 6 caracteres)");
+                      if (newPass) {
+                        if (newPass.length < 6) {
+                          showToast("A nova senha deve ter pelo menos 6 caracteres");
+                          return;
+                        }
+                        try {
+                          const { error } = await supabase.auth.updateUser({ password: newPass });
+                          if (error) {
+                            showToast("Erro ao alterar a senha: " + error.message);
+                          } else {
+                            showToast("Senha técnica alterada com sucesso");
+                          }
+                        } catch (err) {
+                          showToast("Erro ao atualizar a senha");
                         }
                       }
                     }}
@@ -664,7 +829,11 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
                       <span className="text-[14px] text-zinc-400">Proteção adicional contra acessos indesejados</span>
                     </div>
                     <div
-                      onClick={() => updateSetting("twoFactor", !settings.twoFactor)}
+                      onClick={() => {
+                        if (!verifyPIN("Alterar autenticação de dois fatores")) return;
+                        updateSetting("twoFactor", !settings.twoFactor);
+                        showToast("Autenticação de dois fatores actualizada");
+                      }}
                       className="relative inline-flex items-center cursor-pointer transition-all shrink-0"
                     >
                       <div
@@ -688,9 +857,15 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
                     </div>
                     <button 
                       onClick={() => {
+                        if (!verifyPIN("Alterar PIN de segurança")) return;
                         const newPin = prompt("Defina um novo PIN de quatro dígitos", settings.pinCode);
-                        if (newPin && newPin.length === 4 && !isNaN(Number(newPin))) {
-                          updateSetting("pinCode", newPin);
+                        if (newPin) {
+                          if (newPin.length === 4 && !isNaN(Number(newPin))) {
+                            updateSetting("pinCode", newPin);
+                            showToast("PIN de segurança actualizado com sucesso");
+                          } else {
+                            showToast("PIN inválido! Deve conter exactamente 4 dígitos numéricos");
+                          }
                         }
                       }}
                       className="bg-transparent border-none font-normal text-[14px] px-[8px] py-[4px] rounded-[4px] text-white cursor-pointer hover:bg-neutral-700"
@@ -702,7 +877,7 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
               </div>
 
               <div className="flex flex-col gap-[8px] bg-zinc-900 p-[8px] rounded-[8px]">
-                <span className="text-[14px] font-normal text-white uppercase tracking-wider px-1">
+                <span className="text-[14px] font-normal text-white px-1">
                   Definições de visibilidade
                 </span>
 
@@ -711,7 +886,12 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
                     <span className="text-[16px] text-neutral-300 font-normal">Quem vê meu perfil</span>
                     <select
                       value={settings.profileVisibility}
-                      onChange={(e) => updateSetting("profileVisibility", e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!verifyPIN("Alterar visibilidade do perfil")) return;
+                        updateSetting("profileVisibility", val);
+                        showToast("Visibilidade do perfil actualizada");
+                      }}
                       className="bg-zinc-950 text-white rounded p-1 text-[14px] border-none focus:outline-none"
                     >
                       <option value="todos">Todos</option>
@@ -724,7 +904,12 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
                     <span className="text-[16px] text-neutral-300 font-normal">Quem pode enviar mensagens</span>
                     <select
                       value={settings.messagesVisibility}
-                      onChange={(e) => updateSetting("messagesVisibility", e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!verifyPIN("Alterar quem pode enviar mensagens")) return;
+                        updateSetting("messagesVisibility", val);
+                        showToast("Definições de mensagens actualizada");
+                      }}
                       className="bg-zinc-950 text-white rounded p-1 text-[14px] border-none focus:outline-none"
                     >
                       <option value="todos">Todos</option>
@@ -736,7 +921,12 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
                     <span className="text-[16px] text-neutral-300 font-normal">Quem vê meu contacto</span>
                     <select
                       value={settings.phoneVisibility}
-                      onChange={(e) => updateSetting("phoneVisibility", e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!verifyPIN("Alterar visibilidade do contacto")) return;
+                        updateSetting("phoneVisibility", val);
+                        showToast("Visibilidade do contacto actualizada");
+                      }}
                       className="bg-zinc-950 text-white rounded p-1 text-[14px] border-none focus:outline-none"
                     >
                       <option value="todos">Todos</option>
@@ -748,7 +938,7 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
               </div>
 
               <div className="flex flex-col gap-[8px] bg-zinc-900 p-[8px] rounded-[8px]">
-                <span className="text-[14px] font-normal text-white uppercase tracking-wider px-1">
+                <span className="text-[14px] font-normal text-white px-1">
                   Utilizadores bloqueados
                 </span>
 
@@ -763,7 +953,9 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
                   <button 
                     onClick={() => {
                       if (!tempBlockUser.trim()) return;
-                      const updated = [...settings.blockedUsers, tempBlockUser.trim()];
+                      const targetUser = tempBlockUser.trim();
+                      if (!verifyPIN(`Confirmar o bloqueio de ${targetUser}`)) return;
+                      const updated = [...settings.blockedUsers, targetUser];
                       updateSetting("blockedUsers", updated);
                       setTempBlockUser("");
                       showToast("Utilizador adicionado à lista de bloqueio");
@@ -776,12 +968,13 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
 
                 {settings.blockedUsers.length > 0 ? (
                   <div className="flex flex-wrap gap-[8px] px-1 pb-1">
-                    {settings.blockedUsers.map((user) => (
-                      <div key={user} className="flex items-center gap-[4px] bg-zinc-800 px-[8px] py-[4px] rounded-full text-[14px] text-zinc-300">
-                        <span>{user}</span>
+                    {settings.blockedUsers.map((blockedUser) => (
+                      <div key={blockedUser} className="flex items-center gap-[4px] bg-zinc-800 px-[8px] py-[4px] rounded-full text-[14px] text-zinc-300">
+                        <span>{blockedUser}</span>
                         <button 
                           onClick={() => {
-                            const filtered = settings.blockedUsers.filter(u => u !== user);
+                            if (!verifyPIN(`Confirmar o desbloqueio de ${blockedUser}`)) return;
+                            const filtered = settings.blockedUsers.filter(u => u !== blockedUser);
                             updateSetting("blockedUsers", filtered);
                             showToast("Utilizador desbloqueado com sucesso");
                           }}
@@ -799,13 +992,14 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
 
               <div className="flex flex-col gap-[8px] bg-zinc-900 p-[8px] rounded-[8px]">
                 <div className="flex justify-between items-center px-1">
-                  <span className="text-[14px] font-normal text-white uppercase tracking-wider">
+                  <span className="text-[14px] font-normal text-white">
                     Dispositivos conectados
                   </span>
                   <button 
                     onClick={() => {
+                      if (!verifyPIN("Encerrar todas as outras sessões activas")) return;
                       updateSetting("sessions", [
-                        { id: "s1", device: "Telemóvel iphone maptuo", lastActive: "Activo agora" }
+                        { id: "s1", device: getDeviceName(), lastActive: "Activo agora" }
                       ]);
                       showToast("Outras sessões encerradas com sucesso");
                     }}
@@ -828,6 +1022,7 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
                       {sess.id !== "s1" && (
                         <button 
                           onClick={() => {
+                            if (!verifyPIN(`Encerrar a sessão no dispositivo ${sess.device}`)) return;
                             const filtered = settings.sessions.filter(s => s.id !== sess.id);
                             updateSetting("sessions", filtered);
                             showToast("Sessão desativada com sucesso");
@@ -1416,12 +1611,13 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
             <div className="flex flex-col gap-[8px]">
               
               <div className="flex flex-col gap-[8px] bg-zinc-900 p-[8px] rounded-[8px]">
-                <span className="text-[14px] font-normal text-white uppercase tracking-wider px-1">
+                <span className="text-[14px] font-normal text-white px-1">
                   Atendimento de suporte ativo
                 </span>
 
                 <div className="flex flex-col gap-[8px]">
                   <textarea
+                    id="support-textarea"
                     rows={2}
                     placeholder="Descreva detalhadamente seu problema para o suporte..."
                     value={supportMessage}
@@ -1455,18 +1651,61 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
               </div>
 
               <div className="flex flex-col gap-[8px] bg-zinc-900 p-[8px] rounded-[8px]">
-                <span className="text-[14px] font-normal text-white uppercase tracking-wider px-1">
+                <span className="text-[14px] font-normal text-white px-1">
                   Perguntas frequentes
                 </span>
 
                 <div className="flex flex-col gap-[8px]">
                   {[
-                    { q: "Como criar um anúncio gratuito no aplicativo", a: "Basta acessar a tela de criação, preencher os detalhes do produto, carregar as fotografias e confirmar a publicação direta" },
-                    { q: "Como posso alterar o meu número de telefone", a: "Acesse as definições da conta, selecione as informações pessoais e atualize o seu contacto no formulário" },
-                    { q: "Como entrar em contacto com o suporte técnico", a: "Você pode enviar uma mensagem direta pelo formulário de ajuda nesta tela ou usar o botão de suporte whatsapp" },
-                    { q: "É possível denunciar um comportamento suspeito", a: "Sim, você pode relatar qualquer comportamento irregular através da opção de informar problemas ou diretamente no chat" },
-                    { q: "Como gerenciar a privacidade do meu perfil", a: "Abra as configurações de segurança e privacidade para definir quem pode visualizar seus dados cadastrados" },
-                    { q: "Como encontrar produtos facilmente no feed", a: "Utilize a barra de pesquisa rápida para filtrar por categoria, marca ou palavras-chave de interesse" },
+                    { 
+                      q: "Como criar um anúncio gratuito no aplicativo", 
+                      a: "Basta acessar a tela de criação, preencher os detalhes do produto, carregar as fotografias e confirmar a publicação direta",
+                      btnLabel: "Criar anúncio gratuito",
+                      action: () => {
+                        if (onNavigate) {
+                          onNavigate("anunciar");
+                        } else if (onBack) {
+                          onBack();
+                        }
+                      }
+                    },
+                    { 
+                      q: "Como posso alterar o meu número de telefone", 
+                      a: "Acesse as definições da conta, selecione as informações pessoais e atualize o seu contacto no formulário",
+                      btnLabel: "Alterar número de telefone",
+                      action: () => setCurrentSubView("profile")
+                    },
+                    { 
+                      q: "Como entrar em contacto com o suporte técnico", 
+                      a: "Você pode enviar uma mensagem direta pelo formulário de ajuda nesta tela ou usar o botão de suporte whatsapp",
+                      btnLabel: "Falar com o suporte agora",
+                      action: () => {
+                        const el = document.getElementById("support-textarea");
+                        if (el) el.focus();
+                      }
+                    },
+                    { 
+                      q: "É possível denunciar um comportamento suspeito", 
+                      a: "Sim, você pode relatar qualquer comportamento irregular através da opção de informar problemas ou diretamente no chat",
+                      btnLabel: "Denunciar comportamento",
+                      action: () => {
+                        if (onNavigate) onNavigate("denuncias");
+                      }
+                    },
+                    { 
+                      q: "Como gerenciar a privacidade do meu perfil", 
+                      a: "Abra as configurações de segurança e privacidade para definir quem pode visualizar seus dados cadastrados",
+                      btnLabel: "Ajustar definições de privacidade",
+                      action: () => setCurrentSubView("security")
+                    },
+                    { 
+                      q: "Como encontrar produtos facilmente no feed", 
+                      a: "Utilize a barra de pesquisa rápida para filtrar por categoria, marca ou palavras-chave de interesse",
+                      btnLabel: "Voltar para o feed de produtos",
+                      action: () => {
+                        if (onBack) onBack();
+                      }
+                    },
                   ].map((faq, idx) => {
                     const isExpanded = expandedFaq === idx;
                     return (
@@ -1479,9 +1718,17 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
                           <span className="text-white font-normal">{isExpanded ? "−" : "+"}</span>
                         </button>
                         {isExpanded && (
-                          <p className="p-[8px] text-[14px] text-zinc-300 bg-zinc-900 leading-snug">
-                            {faq.a}
-                          </p>
+                          <div className="p-[8px] bg-zinc-900 flex flex-col gap-[8px]">
+                            <p className="text-[14px] text-zinc-300 leading-snug">
+                              {faq.a}
+                            </p>
+                            <button
+                              onClick={faq.action}
+                              className="w-full p-[8px] bg-white text-black font-normal rounded-[6px] hover:opacity-90 active:scale-95 transition-all text-[14px] border-none cursor-pointer"
+                            >
+                              {faq.btnLabel}
+                            </button>
+                          </div>
                         )}
                       </div>
                     );
@@ -1490,7 +1737,7 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
               </div>
 
               <div className="flex flex-col gap-[8px] bg-zinc-900 p-[8px] rounded-[8px]">
-                <span className="text-[14px] font-normal text-white uppercase tracking-wider px-1">
+                <span className="text-[14px] font-normal text-white px-1">
                   Documentos corporativos
                 </span>
 
@@ -1503,7 +1750,7 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
                   ].map((label) => (
                     <button
                       key={label}
-                      onClick={() => showToast(`Leitura do documento com sucesso`)}
+                      onClick={() => setViewingDoc(label)}
                       className="p-[8px] bg-zinc-800 hover:bg-zinc-750 text-white font-normal text-[14px] rounded-[6px] cursor-pointer border-none"
                     >
                       {label}
@@ -1526,6 +1773,80 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
             </button>
           </div>
 
+        </div>
+      )}
+
+      {viewingDoc && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-[8px] z-50">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-[12px] p-[16px] max-w-lg w-full flex flex-col gap-[8px] max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-[8px]">
+              <h3 className="text-[20px] font-bold text-white">
+                {viewingDoc}
+              </h3>
+              <button
+                onClick={() => setViewingDoc(null)}
+                className="p-[4px] text-zinc-400 hover:text-white bg-transparent border-none cursor-pointer"
+              >
+                <X className="w-6 h-6" strokeWidth={3} />
+              </button>
+            </div>
+            <div className="text-[14px] text-zinc-300 leading-relaxed overflow-y-auto pr-[4px]">
+              {viewingDoc === "Termos de uso" && (
+                <div className="flex flex-col gap-[8px]">
+                  <p className="font-bold text-white text-[16px]">1. Aceitação dos termos</p>
+                  <p>Ao acessar e utilizar o portal Boladas, você concorda expressamente em cumprir todos os presentes termos e condições de uso, bem como a legislação moçambicana vigente.</p>
+                  <p className="font-bold text-white text-[16px]">2. Publicação de anúncios</p>
+                  <p>Os anúncios devem ser verídicos, conter descrições claras sobre o estado do produto e valores reais. É estritamente proibida a publicação de produtos ilegais, réplicas não autorizadas ou serviços proibidos.</p>
+                  <p className="font-bold text-white text-[16px]">3. Responsabilidade do utilizador</p>
+                  <p>Cada utilizador é integralmente responsável pelas informações prestadas, pelas mensagens enviadas no chat e pelas negociações comerciais efetuadas com outros utilizadores.</p>
+                  <p className="font-bold text-white text-[16px]">4. Moderação e bloqueios</p>
+                  <p>O portal Boladas reserva-se o direito de remover anúncios enganosos e suspender ou banir utilizadores que violem as regras de boa convivência ou cometam fraudes.</p>
+                </div>
+              )}
+              {viewingDoc === "Políticas de privacidade" && (
+                <div className="flex flex-col gap-[8px]">
+                  <p className="font-bold text-white text-[16px]">1. Recolha de informação</p>
+                  <p>Recolhemos informações básicas de cadastro como nome completo, contacto telefónico, endereço de e-mail e dados necessários para a sincronização da conta.</p>
+                  <p className="font-bold text-white text-[16px]">2. Proteção de dados</p>
+                  <p>Utilizamos sistemas avançados integrados ao Supabase e Firestore para criptografar os seus dados, garantindo que suas senhas e PINs de segurança estejam totalmente encriptados e invisíveis a terceiros.</p>
+                  <p className="font-bold text-white text-[16px]">3. Partilha de dados</p>
+                  <p>Não vendemos nem partilhamos dados pessoais de utilizadores com anunciantes ou terceiros. Seus dados de contacto são exibidos apenas de acordo com o nível de visibilidade definido por si nas definições de segurança.</p>
+                  <p className="font-bold text-white text-[16px]">4. Direitos do utilizador</p>
+                  <p>Você pode, a qualquer momento, atualizar seus dados pessoais, alterar o PIN de segurança, ativar/desativar a autenticação de dois fatores, ou solicitar a eliminação definitiva da sua conta.</p>
+                </div>
+              )}
+              {viewingDoc === "Uso de cookies" && (
+                <div className="flex flex-col gap-[8px]">
+                  <p className="font-bold text-white text-[16px]">1. O que são cookies?</p>
+                  <p>Cookies são pequenos ficheiros de texto armazenados no seu dispositivo para melhorar a velocidade e a personalização de navegação no aplicativo.</p>
+                  <p className="font-bold text-white text-[16px]">2. Cookies essenciais</p>
+                  <p>Utilizamos cookies essenciais para manter a sua sessão activa de forma segura (armazenados localmente via localStorage ou cookies de sessão) para que não precise de fazer login repetidamente.</p>
+                  <p className="font-bold text-white text-[16px]">3. Cookies de preferências</p>
+                  <p>Estes cookies memorizam as suas preferências de personalização, como o modo de visualização escuro/claro, tamanho da fonte escolhido no menu e as definições de notificações.</p>
+                  <p className="font-bold text-white text-[16px]">4. Como controlar cookies?</p>
+                  <p>Através das configurações de privacidade do seu navegador, você pode limpar, recusar ou bloquear cookies, ciente de que isso poderá afetar certas funcionalidades do portal.</p>
+                </div>
+              )}
+              {viewingDoc === "Licença de uso" && (
+                <div className="flex flex-col gap-[8px]">
+                  <p className="font-bold text-white text-[16px]">1. Concessão de licença</p>
+                  <p>É concedida ao utilizador uma licença limitada, pessoal, revogável, não-exclusiva e intransferível para aceder e usar o aplicativo Boladas estritamente para fins pessoais.</p>
+                  <p className="font-bold text-white text-[16px]">2. Restrições de uso</p>
+                  <p>É expressamente proibido realizar engenharia reversa no código do aplicativo, extrair dados em massa de anúncios (scraping), ou revender as tecnologias aqui integradas sem consentimento por escrito.</p>
+                  <p className="font-bold text-white text-[16px]">3. Propriedade intelectual</p>
+                  <p>Todas as marcas, logótipos, designs, interfaces de utilizador e bases de dados pertencem exclusivamente aos proprietários e parceiros do portal Boladas.</p>
+                  <p className="font-bold text-white text-[16px]">4. Limitação de responsabilidade</p>
+                  <p>A licença é disponibilizada "tal como está". Não nos responsabilizamos por eventuais instabilidades temporárias de rede ou danos indiretos resultantes de transações comerciais autónomas.</p>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setViewingDoc(null)}
+              className="w-full mt-[8px] p-[8px] bg-white text-black font-normal rounded-[6px] hover:opacity-90 active:scale-95 transition-all text-[14px] border-none cursor-pointer"
+            >
+              Fechar documento
+            </button>
+          </div>
         </div>
       )}
     </div>

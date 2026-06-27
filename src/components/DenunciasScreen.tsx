@@ -14,13 +14,9 @@ interface Denuncia {
   id: string;
   created_at: string;
   product_id?: string;
-  productId?: string;
   product_name?: string;
-  productName?: string;
   reporter_id?: string;
-  reporterId?: string;
   reporter_name?: string;
-  reporterName?: string;
   reason: string;
   details?: string;
   status?: string;
@@ -175,8 +171,8 @@ export default function DenunciasScreen({ user, userProfile, onBack }: Denuncias
             ) : (
               <div className="flex flex-col gap-[8px]">
                 {denuncias.map((item) => {
-                  const prodName = item.product_name || item.productName || "Anúncio";
-                  const repName = item.reporter_name || item.reporterName || item.profiles?.name || "Usuário";
+                  const prodName = item.product_name || "Anúncio";
+                  const repName = item.reporter_name || item.profiles?.name || "Usuário";
                   const itemStatus = item.status || "Aberto";
                   const itemReplies = item.replies || [];
 
@@ -240,7 +236,7 @@ export default function DenunciasScreen({ user, userProfile, onBack }: Denuncias
             <div className="flex justify-between items-start gap-[8px]">
               <div className="flex flex-col">
                 <span className="font-black text-[18px] text-white leading-tight">
-                  {selectedDenuncia.product_name || selectedDenuncia.productName || "Anúncio Denunciado"}
+                  {selectedDenuncia.product_name || "Anúncio Denunciado"}
                 </span>
                 <span className="text-[11px] text-zinc-400 mt-0.5">
                   Motivo: {selectedDenuncia.reason}
@@ -268,7 +264,7 @@ export default function DenunciasScreen({ user, userProfile, onBack }: Denuncias
 
             <div className="flex items-center gap-[6px] text-[11px] text-zinc-500">
               <ShieldAlert className="w-4 h-4 text-zinc-400" />
-              <span>Relatado Por {selectedDenuncia.reporter_name || selectedDenuncia.reporterName || selectedDenuncia.profiles?.name || "Usuário"}</span>
+              <span>Relatado Por {selectedDenuncia.reporter_name || selectedDenuncia.profiles?.name || "Usuário"}</span>
             </div>
 
             {/* Dev Controls for Status */}

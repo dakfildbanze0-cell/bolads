@@ -22,15 +22,19 @@ export default function MenuScreen({ onBack, onNavigate }: MenuScreenProps) {
       </div>
 
       {/* Title */}
-      <h3 className="font-chivo text-[18px] font-black text-white px-[4px] mt-[4px]">
-        Menu De Opções
+      <h3 className="font-chivo text-[18px] font-bold text-white px-[4px] mt-[4px]">
+        Menu de opções
       </h3>
 
       <div className="flex flex-col gap-[8px] w-full">
         {/* Rectangle 1: Definições */}
-        <button
-          onClick={() => onNavigate("settings", null)}
-          className="flex flex-row items-center gap-[12px] p-[12px] w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-[8px] transition-all duration-150 cursor-pointer text-left text-white group"
+        <a
+          href="#settings"
+          onClick={(e) => {
+            e.preventDefault();
+            onNavigate("settings", null);
+          }}
+          className="flex flex-row items-center gap-[12px] p-[12px] w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-[8px] transition-all duration-150 cursor-pointer text-left text-white group no-underline"
         >
           <div className="p-[6px] bg-zinc-900 border border-zinc-700 rounded-[8px] group-hover:border-zinc-600 shrink-0">
             <Settings className="w-4 h-4 text-zinc-350 group-hover:text-white transition-colors" strokeWidth={2.5} />
@@ -40,64 +44,76 @@ export default function MenuScreen({ onBack, onNavigate }: MenuScreenProps) {
               Definições
             </span>
             <span className="text-[11px] text-zinc-400 leading-tight mt-0.5">
-              Ajustar As Suas Preferências De Conta
+              Ajustar as suas preferências de conta
             </span>
           </div>
-        </button>
+        </a>
 
         {/* Rectangle 2: Suporte e ajuda */}
-        <button
-          onClick={() => onNavigate("settings", "help")}
-          className="flex flex-row items-center gap-[12px] p-[12px] w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-[8px] transition-all duration-150 cursor-pointer text-left text-white group"
+        <a
+          href="#settings"
+          onClick={(e) => {
+            e.preventDefault();
+            onNavigate("settings", "help");
+          }}
+          className="flex flex-row items-center gap-[12px] p-[12px] w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-[8px] transition-all duration-150 cursor-pointer text-left text-white group no-underline"
         >
           <div className="p-[6px] bg-zinc-900 border border-zinc-700 rounded-[8px] group-hover:border-zinc-600 shrink-0">
             <HelpCircle className="w-4 h-4 text-zinc-350 group-hover:text-white transition-colors" strokeWidth={2.5} />
           </div>
           <div className="flex flex-col justify-center">
             <span className="text-[14px] font-bold tracking-tight text-white leading-tight">
-              Suporte E Ajuda
+              Suporte e ajuda
             </span>
             <span className="text-[11px] text-zinc-400 leading-tight mt-0.5">
-              Pedir Assistência Ou Consultar As Perguntas Frequentes
+              Pedir assistência ou consultar as perguntas frequentes
             </span>
           </div>
-        </button>
+        </a>
 
         {/* Rectangle 3: Informar bug */}
-        <button
-          onClick={() => onNavigate("bugs")}
-          className="flex flex-row items-center gap-[12px] p-[12px] w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-[8px] transition-all duration-150 cursor-pointer text-left text-white group"
+        <a
+          href="#bugs"
+          onClick={(e) => {
+            e.preventDefault();
+            onNavigate("bugs");
+          }}
+          className="flex flex-row items-center gap-[12px] p-[12px] w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-[8px] transition-all duration-150 cursor-pointer text-left text-white group no-underline"
         >
           <div className="p-[6px] bg-zinc-900 border border-zinc-700 rounded-[8px] group-hover:border-zinc-600 shrink-0">
-            <Bug className="w-4 h-4 text-zinc-350 group-hover:text-white transition-colors" strokeWidth={2.5} />
+            <Settings className="w-4 h-4 text-zinc-350 group-hover:text-white transition-colors" strokeWidth={2.5} />
           </div>
           <div className="flex flex-col justify-center">
             <span className="text-[14px] font-bold tracking-tight text-white leading-tight">
-              Informar Bug
+              Informar bug
             </span>
             <span className="text-[11px] text-zinc-400 leading-tight mt-0.5">
-              Reportar Falhas Técnicas Ou Erros No Aplicativo
+              Reportar falhas técnicas ou erros no aplicativo
             </span>
           </div>
-        </button>
+        </a>
 
         {/* Rectangle 4: Denúncias */}
-        <button
-          onClick={() => onNavigate("denuncias")}
-          className="flex flex-row items-center gap-[12px] p-[12px] w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-[8px] transition-all duration-150 cursor-pointer text-left text-white group"
+        <a
+          href="#denuncias"
+          onClick={(e) => {
+            e.preventDefault();
+            onNavigate("denuncias");
+          }}
+          className="flex flex-row items-center gap-[12px] p-[12px] w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-[8px] transition-all duration-150 cursor-pointer text-left text-white group no-underline"
         >
           <div className="p-[6px] bg-zinc-900 border border-zinc-700 rounded-[8px] group-hover:border-zinc-600 shrink-0">
             <ShieldAlert className="w-4 h-4 text-zinc-350 group-hover:text-white transition-colors" strokeWidth={2.5} />
           </div>
           <div className="flex flex-col justify-center">
             <span className="text-[14px] font-bold tracking-tight text-white leading-tight">
-              Painel De Denúncias
+              Painel de denúncias
             </span>
             <span className="text-[11px] text-zinc-400 leading-tight mt-0.5">
-              Gerenciar Ou Visualizar Denúncias De Anúncios
+              Gerenciar ou visualizar denúncias de anúncios
             </span>
           </div>
-        </button>
+        </a>
       </div>
 
       <div className="pt-[16px] text-center mt-auto">

@@ -30,12 +30,13 @@ interface ProductDetailScreenProps {
   onBack: () => void;
   onToggleFollowSeller?: (sellerName: string) => void;
   isFollowed?: boolean;
-  onToggleBookmark?: (productId: string) => void;
+  onToggleBookmark?: (product_id: string) => void;
   isBookmarked?: boolean;
   onSendMessage?: (messageText: string) => void;
   allProducts?: any[];
   onSelectProduct?: (product: any) => void;
   currentUser?: any;
+  onViewSellerProfile?: (sellerId: string) => void;
 }
 
 interface Comment {
@@ -104,7 +105,8 @@ export default function ProductDetailScreen({
   onSendMessage,
   allProducts = [],
   onSelectProduct,
-  currentUser
+  currentUser,
+  onViewSellerProfile
 }: ProductDetailScreenProps) {
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -299,12 +301,12 @@ export default function ProductDetailScreen({
       if (product.seller_id && product.seller_id !== currentUser.id && !currentUserEvaluation) {
         const { sendNotification } = await import("../lib/notifications");
         await sendNotification({
-          userId: product.seller_id,
+          user_id: product.seller_id,
           type: "review",
           title: "Nova avaliação",
           description: `Seu perfil recebeu uma nova avaliação de ${ratingStars} estrela(s).`,
           productName: product.name,
-          productId: product.id,
+          product_id: product.id,
           senderId: currentUser.id
         });
       }
@@ -347,7 +349,7 @@ export default function ProductDetailScreen({
       const { data, error } = await supabase
         .from('comentarios')
         .select('*')
-        .eq('productId', product.id)
+        .eq('product_id', product.id)
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -378,7 +380,7 @@ export default function ProductDetailScreen({
         event: '*', 
         schema: 'public', 
         table: 'comentarios', 
-        filter: `productId=eq.${product.id}` 
+        filter: `product_id=eq.${product.id}` 
       }, () => {
         fetchComments();
       })
@@ -707,7 +709,29 @@ export default function ProductDetailScreen({
         
         {/* Seller Info Block: Avatar aligned strictly with the Name and Stats below the Name. Price is aligned with the name to the right */}
         <div className="flex justify-between items-center w-full gap-[8px]">
-          <div className="flex items-center gap-[8px] min-w-0 flex-1">
+          <div 
+            onClick={async () => {
+              if (product.seller_id) {
+                onViewSellerProfile?.(product.seller_id);
+              } else if (product.sellerName) {
+                try {
+                  const { data } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('name', product.sellerName)
+                    .maybeSingle();
+                  if (data?.id) {
+                    onViewSellerProfile?.(data.id);
+                  } else {
+                    console.warn("Não foi possível encontrar o ID do perfil com nome:", product.sellerName);
+                  }
+                } catch (err) {
+                  console.error("Erro ao buscar perfil pelo nome:", err);
+                }
+              }
+            }}
+            className="flex items-center gap-[8px] min-w-0 flex-1 cursor-pointer hover:opacity-80 transition-all active:scale-[0.99]"
+          >
             <img
               src={product.sellerAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
               alt={product.sellerName || "Vendedor"}
@@ -715,7 +739,7 @@ export default function ProductDetailScreen({
               referrerPolicy="no-referrer"
             />
             <div className="flex flex-col min-w-0 leading-tight">
-              <span className="font-hanken text-[16px] md:text-[18px] font-black text-white">
+              <span className="font-hanken text-[16px] md:text-[18px] font-black text-white hover:underline">
                 {formatText(product.sellerName || "Vendedor")}
               </span>
               
@@ -747,22 +771,22 @@ export default function ProductDetailScreen({
 
         {/* Separated Product Title & Local Pickup below (not aligned with avatar) */}
         <div className="flex flex-col min-w-0 leading-tight mt-[4px]">
-          <h1 className="font-chivo text-[18px] md:text-[22px] font-black text-white uppercase tracking-tight">
+          <h1 className="font-chivo text-[18px] md:text-[22px] font-black text-white uppercase tracking-tight lg:hidden">
             {formatText(product.name)}
           </h1>
           <div className="flex flex-col gap-[4px] mt-[4px]">
             <div className="flex items-center justify-between w-full">
-              <span className="font-chivo text-[18px] md:text-[22px] font-black text-white shrink-0">
+              <span className="font-chivo text-[18px] md:text-[22px] font-black text-white shrink-0 lg:hidden">
                 {product.price}
               </span>
               {!isOwnProduct && (
                 <button
                   type="button"
-                  onClick={() => onToggleFollowSeller?.(product.sellerName)}
-                  className="flex items-center justify-center gap-[6px] bg-white text-black font-extrabold text-[14px] uppercase tracking-wider px-[20px] py-[8px] rounded-[8px] active:scale-95 transition-all border-none shrink-0 cursor-pointer"
+                  onClick={() => onToggleFollowSeller?.(product.seller_id || product.sellerName)}
+                  className="flex items-center justify-center gap-[6px] bg-white text-black font-extrabold text-[14px] px-[20px] py-[8px] rounded-[8px] active:scale-95 transition-all border-none shrink-0 cursor-pointer ml-auto"
                 >
                   <Heart className={`w-4 h-4 ${isFollowed ? "text-rose-500 fill-rose-500" : "text-black"}`} strokeWidth={2.5} />
-                  <span>{isFollowed ? "Seguido" : "Seguir"}</span>
+                  <span>{isFollowed ? "Seguindo" : "Seguir"}</span>
                 </button>
               )}
             </div>
@@ -776,7 +800,7 @@ export default function ProductDetailScreen({
 
         {/* Description section with max 8px components separation and custom font sizes */}
         <div className="flex flex-col gap-[8px] mt-[4px]">
-          <div className="flex flex-col gap-[4px] bg-zinc-900/50 p-[8px] rounded-[8px]">
+          <div className="flex flex-col gap-[4px] bg-zinc-900/50 p-[8px] rounded-[8px] lg:hidden">
             <h3 className="font-chivo text-[17px] font-black text-neutral-200">
               {formatText("Descrição")}
             </h3>
@@ -892,7 +916,7 @@ export default function ProductDetailScreen({
                   const authorAvatar = currentUser?.user_metadata?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80";
                   
                   const { error } = await supabase.from('comentarios').insert({
-                    productId: product.id,
+                    product_id: product.id,
                     authorId: currentUser?.id || "anonimo",
                     authorName,
                     authorAvatar,
@@ -906,12 +930,12 @@ export default function ProductDetailScreen({
                     try {
                       const { sendNotification } = await import("../lib/notifications");
                       await sendNotification({
-                        userId: product.seller_id,
+                        user_id: product.seller_id,
                         type: "comment",
                         title: "Novo comentário",
                         description: `Alguém comentou no seu produto ${product.name}.`,
                         productName: product.name,
-                        productId: product.id,
+                        product_id: product.id,
                         senderId: currentUser.id
                       });
                     } catch (err) {
@@ -1046,12 +1070,12 @@ export default function ProductDetailScreen({
                     setSubmittingReport(true);
                     try {
                       const { error } = await supabase.from('denuncias').insert({
-                        productId: product.id,
-                        productName: product.name,
-                        sellerId: product.seller_id || "",
-                        sellerName: product.seller_name || "",
-                        reporterId: currentUser?.id || "anonimo",
-                        reporterName: currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || "Membro",
+                        product_id: product.id,
+                        product_name: product.name,
+                        seller_id: product.seller_id || "",
+                        seller_name: product.seller_name || "",
+                        reporter_id: currentUser?.id || "anonimo",
+                        reporter_name: currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || "Membro",
                         reason: reportReason,
                         details: reportDetails.trim()
                       });

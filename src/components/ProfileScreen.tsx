@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Edit3, RefreshCw, Trash2, Users, ShoppingBag, ChevronRight, ArrowLeft, Star, Heart } from "lucide-react";
+import { Edit3, RefreshCw, Trash2, Users, ShoppingBag, ChevronRight, ArrowLeft, Star, Heart, MessageSquare } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { uploadImage } from "../lib/supabase";
 import { formatPrice } from "../lib/formatPrice";
@@ -8,10 +8,26 @@ interface ProfileScreenProps {
   onSelectProduct?: (product: any) => void;
   onBack?: () => void;
   currentUser?: any;
+  userId?: string;
+  targetId?: string;
+  followedSellers?: Record<string, boolean>;
+  onToggleFollow?: (sellerName: string) => void;
+  onStartConversation?: (sellerId: string | null, sellerName: string, sellerImg: string, productData?: any) => void;
 }
 
-export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: ProfileScreenProps) {
+export default function ProfileScreen({ 
+  onSelectProduct, 
+  onBack, 
+  currentUser,
+  userId,
+  targetId: propTargetId,
+  followedSellers = {},
+  onToggleFollow,
+  onStartConversation
+}: ProfileScreenProps) {
   const user = currentUser;
+  const targetId = propTargetId || userId || currentUser?.id;
+  const isOwnProfile = !propTargetId || propTargetId === currentUser?.id;
   
   // States of Profile
   const [profile, setProfile] = useState<any>(null);
@@ -35,26 +51,61 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
   const [realFollowers, setRealFollowers] = useState<any[]>([]);
   const [myEvaluations, setMyEvaluations] = useState<any[]>([]);
 
-  // Load real followers based on current profile's name
+  // Load real followers based on current profile's name and ID
   useEffect(() => {
-    if (!user || !profile?.name) return;
+    if (!profile?.name) return;
 
     const fetchRealFollowers = async () => {
       try {
-        const { data, error } = await supabase
+        // 1. Fallback / Compatibilidade clássica usando followed_sellers JSONB
+        const { data: profilesData, error: profilesError } = await supabase
           .from("profiles")
           .select("id, name, avatar_url, location, followed_sellers");
 
-        if (error) throw error;
+        if (profilesError) throw profilesError;
 
-        if (data) {
-          const followers = data.filter((p: any) => {
-            if (p.id === user.id) return false;
+        let followers: any[] = [];
+        if (profilesData) {
+          followers = profilesData.filter((p: any) => {
+            if (profile.id && p.id === profile.id) return false;
             const followed = p.followed_sellers || {};
-            return followed[profile.name] === true;
+            return followed[profile.name] === true || (profile.id && followed[profile.id] === true);
           });
-          setRealFollowers(followers);
         }
+
+        // 2. Busca oficial na tabela relacional 'follows'
+        let followersFromFollows: any[] = [];
+        if (profile.id) {
+          const { data: followsData } = await supabase
+            .from('follows')
+            .select(`
+              follower_id,
+              profiles:follower_id (id, name, avatar_url, location)
+            `)
+            .eq('following_id', profile.id);
+
+          if (followsData) {
+            // Conversão de tipo segura
+            const mappedProfiles = followsData
+              .map((f: any) => {
+                if (!f.profiles) return null;
+                // Tratar se profiles for array ou objeto único
+                return Array.isArray(f.profiles) ? f.profiles[0] : f.profiles;
+              })
+              .filter(Boolean);
+            followersFromFollows = mappedProfiles;
+          }
+        }
+
+        // 3. Mesclar e remover duplicados
+        const mergedFollowers = [...followers];
+        followersFromFollows.forEach(f => {
+          if (!mergedFollowers.some(existing => existing.id === f.id)) {
+            mergedFollowers.push(f);
+          }
+        });
+
+        setRealFollowers(mergedFollowers);
       } catch (err) {
         console.error("Erro ao carregar seguidores reais do perfil:", err);
       }
@@ -62,7 +113,7 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
 
     fetchRealFollowers();
 
-    const channel = supabase
+    const channel1 = supabase
       .channel(`profile_followers_${profile.name}`)
       .on('postgres_changes', { 
         event: '*', 
@@ -73,10 +124,22 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
       })
       .subscribe();
 
+    const channel2 = supabase
+      .channel(`profile_follows_relational_${profile.name}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'follows'
+      }, () => {
+        fetchRealFollowers();
+      })
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channel1);
+      supabase.removeChannel(channel2);
     };
-  }, [user?.id, profile?.name]);
+  }, [targetId, profile?.name, profile?.id]);
 
   // Load real evaluations for this user profile
   useEffect(() => {
@@ -120,13 +183,13 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
   const [tempPrice, setTempPrice] = useState("");
 
   useEffect(() => {
-    if (!user) return;
+    if (!targetId) return;
     
     const fetchProfile = async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, name, avatar_url, bio, location, phone, isonline, followed_sellers, bookmarks, onboarded, settings')
-        .eq('id', user.id)
+        .eq('id', targetId)
         .single();
       
       if (data) {
@@ -138,12 +201,12 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
     fetchProfile();
 
     const channel = supabase
-      .channel(`profile_view_${user.id}`)
+      .channel(`profile_view_${targetId}`)
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'profiles', 
-        filter: `id=eq.${user.id}` 
+        filter: `id=eq.${targetId}` 
       }, () => {
         fetchProfile();
       })
@@ -152,7 +215,7 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [targetId]);
 
   // Format helper following: "E todo o texto,palavra,nome,ou título deve iniciar com a letra maucula e terminar por menuscular"
   const formatText = (str: string) => {
@@ -166,13 +229,13 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
       .join(" ");
   };
 
-  const displayName = formatText(profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Usuário");
-  const displayAvatar = profile?.avatar_url || user?.user_metadata?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80";
+  const displayName = formatText(profile?.name || (isOwnProfile ? (user?.user_metadata?.full_name || user?.email?.split('@')[0]) : "") || "Vendedor");
+  const displayAvatar = profile?.avatar_url || (isOwnProfile ? user?.user_metadata?.avatar_url : "") || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80";
   const bio = formatText(profile?.bio || "Entusiasta De Comércio Local E Artigos De Qualidade.");
 
   // Products Listener
   useEffect(() => {
-    if (!user) return;
+    if (!targetId) return;
 
     const fetchProducts = async () => {
       const { data, error } = await supabase
@@ -203,7 +266,7 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
           };
         });
 
-        const myItems = formatted.filter(p => p.seller_id === user.id);
+        const myItems = formatted.filter(p => p.seller_id === targetId);
         const followedItems = formatted.filter(p => profile?.followed_sellers && profile.followed_sellers[p.seller_name] === true);
         
         setMyProducts(myItems);
@@ -223,7 +286,7 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, profile]);
+  }, [targetId, profile]);
 
   const handleStartEditing = () => {
     setEditName(displayName);
@@ -270,14 +333,14 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
     }
   };
 
-  const handleUpdatePrice = async (productId: string) => {
+  const handleUpdatePrice = async (product_id: string) => {
     if (!tempPrice.trim()) return;
     try {
       const numericPrice = parseFloat(tempPrice.replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
       const { error } = await supabase
         .from('products')
         .update({ price: numericPrice })
-        .eq('id', productId);
+        .eq('id', product_id);
       
       if (error) throw error;
       setEditingPriceId(null);
@@ -286,13 +349,13 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
     }
   };
 
-  const handleDeleteProduct = async (productId: string) => {
+  const handleDeleteProduct = async (product_id: string) => {
     if (window.confirm("Desejas Apagar Este Anúncio?")) {
       try {
         const { error } = await supabase
           .from('products')
           .delete()
-          .eq('id', productId);
+          .eq('id', product_id);
         
         if (error) throw error;
       } catch (err) {
@@ -326,16 +389,18 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
               <ArrowLeft className="w-5 h-5 text-white stroke-[2.5]" />
             </button>
             <span className="font-hanken font-bold text-[16px] text-white">
-              Meu Perfil
+              {isOwnProfile ? "Meu Perfil" : `Perfil De ${displayName}`}
             </span>
           </div>
 
-          <button
-            onClick={handleStartEditing}
-            className="text-[12px] font-bold font-hanken bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-[8px] active:scale-95 transition-all cursor-pointer border border-zinc-700/30"
-          >
-            Editar Perfil
-          </button>
+          {isOwnProfile && (
+            <button
+              onClick={handleStartEditing}
+              className="text-[12px] font-bold font-hanken bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-[8px] active:scale-95 transition-all cursor-pointer border border-zinc-700/30"
+            >
+              Editar Perfil
+            </button>
+          )}
         </div>
 
         {/* Profile Info & Edit Panel */}
@@ -510,78 +575,130 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
             </div>
 
             {/* Local Stats Grid */}
-            <div className="grid grid-cols-2 gap-[8px] pt-1">
-              <div className="p-3 text-center bg-zinc-950/40 rounded-[8px] border border-zinc-800/20">
+            <div className="grid grid-cols-3 gap-[8px] pt-1">
+              <div className="p-2 text-center bg-zinc-950/40 rounded-[8px] border border-zinc-800/20">
                 <span className="font-hanken text-[9px] text-zinc-400 font-extrabold tracking-widest block mb-0.5">
                   Publicações
                 </span>
-                <span className="font-chivo text-[20px] font-black text-white leading-none">
+                <span className="font-chivo text-[18px] font-black text-white leading-none">
                   {myProducts.length}
                 </span>
               </div>
-              <div className="p-3 text-center bg-zinc-950/40 rounded-[8px] border border-zinc-800/20">
+              <div className="p-2 text-center bg-zinc-950/40 rounded-[8px] border border-zinc-800/20">
                 <span className="font-hanken text-[9px] text-zinc-400 font-extrabold tracking-widest block mb-0.5">
-                  Visualizações
+                  Seguidores
                 </span>
-                <span className="font-chivo text-[20px] font-black text-white leading-none">
-                  {myProducts.reduce((sum, p) => {
-                    const views = typeof p.views === 'number' ? p.views : parseInt(p.views || "0", 10);
-                    return sum + (isNaN(views) ? 0 : views);
-                  }, 0)}
+                <span className="font-chivo text-[18px] font-black text-white leading-none">
+                  {realFollowers.length}
                 </span>
               </div>
+              {isOwnProfile ? (
+                <div className="p-2 text-center bg-zinc-950/40 rounded-[8px] border border-zinc-800/20">
+                  <span className="font-hanken text-[9px] text-zinc-400 font-extrabold tracking-widest block mb-0.5">
+                    A Seguir
+                  </span>
+                  <span className="font-chivo text-[18px] font-black text-white leading-none">
+                    {Object.values(profile?.followed_sellers || {}).filter(Boolean).length}
+                  </span>
+                </div>
+              ) : (
+                <div className="p-2 text-center bg-zinc-950/40 rounded-[8px] border border-zinc-800/20">
+                  <span className="font-hanken text-[9px] text-zinc-400 font-extrabold tracking-widest block mb-0.5">
+                    Avaliação
+                  </span>
+                  <span className="font-chivo text-[18px] font-black text-white leading-none">
+                    {myEvaluations.length > 0
+                      ? (myEvaluations.reduce((sum, item) => sum + (item.estrelas || 0), 0) / myEvaluations.length).toFixed(1)
+                      : "—"
+                    }
+                  </span>
+                </div>
+              )}
             </div>
+
+            {/* If public view, show follow and send message buttons */}
+            {!isOwnProfile && (
+              <div className="flex items-center gap-[8px] mt-2">
+                {(() => {
+                  const isFollowing = profile && (followedSellers[profile.name] === true || followedSellers[profile.id] === true);
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => onToggleFollow?.(profile?.id || profile?.name || "")}
+                      className="flex-1 flex items-center justify-center gap-[6px] bg-white text-zinc-950 font-hanken text-[12px] font-extrabold py-2.5 rounded-[8px] hover:opacity-90 transition-all active:scale-[0.98] cursor-pointer border-none outline-none"
+                    >
+                      <Heart className={`w-4 h-4 ${isFollowing ? "text-rose-500 fill-rose-500" : "text-zinc-950"}`} strokeWidth={2.5} />
+                      <span>{isFollowing ? "Seguindo" : "Seguir"}</span>
+                    </button>
+                  );
+                })()}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (profile) {
+                      onStartConversation?.(profile.id, profile.name, profile.avatar_url, null);
+                    }
+                  }}
+                  className="flex-1 bg-zinc-800 text-white font-hanken text-[12px] font-extrabold py-2.5 rounded-[8px] hover:bg-zinc-700 transition-all cursor-pointer border-none outline-none flex items-center justify-center gap-[6px]"
+                >
+                  <MessageSquare className="w-4 h-4 text-white" strokeWidth={2.5} />
+                  <span>Mensagem</span>
+                </button>
+              </div>
+            )}
           </section>
         )}
 
         {/* Following Products horizontal loop - transparent background and no borders */}
-        <div className="flex flex-col gap-[6px] mt-1 px-2">
-          <h3 className="font-hanken text-[12px] text-zinc-400 font-extrabold tracking-wider">
-            Seguindo
-          </h3>
-          {followedProducts.length === 0 ? (
-            <div className="h-[150px] flex flex-col items-center justify-center bg-transparent rounded-[8px] text-center p-4">
-              <span className="text-[12px] text-zinc-500 font-hanken">Nenhuma Publicação De Quem Segues</span>
-            </div>
-          ) : (
-            <div className="flex gap-[8px] overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory bg-transparent">
-              {followedProducts.map((p) => (
-                <div
-                  key={p.id}
-                  onClick={() => onSelectProduct?.(p)}
-                  className="flex-none w-[155px] flex flex-col gap-[6px] snap-start bg-transparent"
-                >
-                  <div className="relative w-full h-[150px] rounded-[8px] overflow-hidden bg-transparent cursor-pointer">
-                    <img
-                      className="w-full h-full object-cover"
-                      src={p.img}
-                      alt={p.name}
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/45 to-transparent p-2 flex flex-col justify-end leading-tight">
-                      <span className="font-hanken font-bold text-[11px] text-white truncate w-full opacity-90">
-                        {formatText(p.name)}
-                      </span>
-                      <span className="font-chivo font-black text-zinc-300 text-[12px] mt-0.5">
-                        {p.price}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectProduct?.(p);
-                    }}
-                    className="w-full py-1.5 bg-transparent hover:opacity-85 text-white rounded-[8px] flex items-center justify-center transition-all cursor-pointer border-none"
+        {isOwnProfile && (
+          <div className="flex flex-col gap-[6px] mt-1 px-2">
+            <h3 className="font-hanken text-[12px] text-zinc-400 font-extrabold tracking-wider">
+              Seguindo
+            </h3>
+            {followedProducts.length === 0 ? (
+              <div className="h-[150px] flex flex-col items-center justify-center bg-transparent rounded-[8px] text-center p-4">
+                <span className="text-[12px] text-zinc-500 font-hanken">Nenhuma Publicação De Quem Segues</span>
+              </div>
+            ) : (
+              <div className="flex gap-[8px] overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory bg-transparent">
+                {followedProducts.map((p) => (
+                  <div
+                    key={p.id}
+                    onClick={() => onSelectProduct?.(p)}
+                    className="flex-none w-[155px] flex flex-col gap-[6px] snap-start bg-transparent"
                   >
-                    <ChevronRight className="w-4.5 h-4.5 text-white stroke-[2.5]" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                    <div className="relative w-full h-[150px] rounded-[8px] overflow-hidden bg-transparent cursor-pointer">
+                      <img
+                        className="w-full h-full object-cover"
+                        src={p.img}
+                        alt={p.name}
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/45 to-transparent p-2 flex flex-col justify-end leading-tight">
+                        <span className="font-hanken font-bold text-[11px] text-white truncate w-full opacity-90">
+                          {formatText(p.name)}
+                        </span>
+                        <span className="font-chivo font-black text-zinc-300 text-[12px] mt-0.5">
+                          {p.price}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectProduct?.(p);
+                      }}
+                      className="w-full py-1.5 bg-transparent hover:opacity-85 text-white rounded-[8px] flex items-center justify-center transition-all cursor-pointer border-none"
+                    >
+                      <ChevronRight className="w-4.5 h-4.5 text-white stroke-[2.5]" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Clickable bottom options - Completely transparent backgrounds and no borders/lines */}
         <div className="flex flex-col gap-[4px] mt-2 px-2 bg-transparent">
@@ -592,7 +709,7 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
             <div className="flex items-center gap-3">
               <ShoppingBag className="w-5.5 h-5.5 text-white stroke-[2]" />
               <span className="font-hanken font-bold text-[15px] tracking-wider text-white">
-                Meus Anúncios
+                {isOwnProfile ? "Meus Anúncios" : "Anúncios Do Vendedor"}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -610,7 +727,7 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
             <div className="flex items-center gap-3">
               <Users className="w-5.5 h-5.5 text-white stroke-[2]" />
               <span className="font-hanken font-bold text-[15px] tracking-wider text-white">
-                Meus Seguidores
+                {isOwnProfile ? "Meus Seguidores" : "Seguidores"}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -640,7 +757,7 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
               <ArrowLeft className="w-5 h-5 text-white stroke-[2.5]" />
             </button>
             <span className="font-hanken font-bold text-[16px] text-white">
-              Meus Anúncios
+              {isOwnProfile ? "Meus Anúncios" : "Anúncios Do Vendedor"}
             </span>
           </div>
           <span className="font-chivo font-bold text-sm bg-zinc-800 px-2.5 py-1 rounded-[8px]">
@@ -652,7 +769,7 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
         {myProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 bg-transparent rounded-[8px] text-center gap-2 mt-2">
             <p className="text-zinc-500 font-hanken text-[13px]">
-              Nenhuma Publicação Ativa
+              {isOwnProfile ? "Nenhuma Publicação Ativa" : "Nenhuma Publicação Ativa Deste Vendedor"}
             </p>
           </div>
         ) : (
@@ -711,16 +828,18 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
                           <span className="font-chivo font-black text-white text-[13.5px]">
                             {p.price}
                           </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingPriceId(p.id);
-                              setTempPrice(p.price);
-                            }}
-                            className="text-[10px] text-zinc-400 underline hover:text-white cursor-pointer px-1 py-0.5"
-                          >
-                            Editar Preço
-                          </button>
+                          {isOwnProfile && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingPriceId(p.id);
+                                setTempPrice(p.price);
+                              }}
+                              className="text-[10px] text-zinc-400 underline hover:text-white cursor-pointer px-1 py-0.5"
+                            >
+                              Editar Preço
+                            </button>
+                          )}
                         </div>
                         <span className="text-[9px] text-zinc-500 font-medium">
                           {p.views || 0} {p.views === 1 ? formatText("Visualização") : formatText("Visualizações")}
@@ -731,15 +850,17 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
                 </div>
 
                 {/* Delete direct action - No backgrounds, borderless, clean layout */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteProduct(p.id);
-                  }}
-                  className="w-full mt-1 py-1 bg-transparent hover:text-red-400 text-zinc-400 active:scale-95 transition-all text-center text-[11px] font-bold font-hanken rounded-[8px] cursor-pointer border-none"
-                >
-                  Apagar Anúncio
-                </button>
+                {isOwnProfile && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteProduct(p.id);
+                    }}
+                    className="w-full mt-1 py-1 bg-transparent hover:text-red-400 text-zinc-400 active:scale-95 transition-all text-center text-[11px] font-bold font-hanken rounded-[8px] cursor-pointer border-none"
+                  >
+                    Apagar Anúncio
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -763,7 +884,7 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
               <ArrowLeft className="w-5 h-5 text-white stroke-[2.5]" />
             </button>
             <span className="font-hanken font-bold text-[16px] text-white">
-              Meus Seguidores
+              {isOwnProfile ? "Meus Seguidores" : "Seguidores"}
             </span>
           </div>
           <span className="font-chivo font-bold text-sm bg-zinc-800 px-2.5 py-1 rounded-[8px]">
@@ -775,7 +896,7 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
         {activeFollowers.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 bg-transparent rounded-[8px] text-center gap-2 mt-2">
             <p className="text-zinc-500 font-hanken text-[13px]">
-              Ainda Não Tens Nenhum Seguidor
+              {isOwnProfile ? "Ainda Não Tens Nenhum Seguidor" : "Este Vendedor Ainda Não Tem Seguidores"}
             </p>
           </div>
         ) : (
@@ -804,7 +925,11 @@ export default function ProfileScreen({ onSelectProduct, onBack, currentUser }: 
                 
                 <button 
                   className="text-[11px] font-bold font-hanken bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-[8px] active:scale-95 transition-all cursor-pointer border border-zinc-700/30"
-                  onClick={() => alert("Mensagem Enviada")}
+                  onClick={() => {
+                    if (follower) {
+                      onStartConversation?.(follower.id, follower.name, follower.avatar_url, null);
+                    }
+                  }}
                 >
                   Mensagem
                 </button>

@@ -488,50 +488,7 @@ export default function AnunciarScreen({ userProfile, onBack, onProductCreated }
               </div>
             )}
 
-            {/* Beautiful Floating Interactive Right Sidebar - strict 8px separation constraint */}
-            <div className="absolute right-[12px] top-1/2 -translate-y-1/2 flex flex-col gap-[8px] z-30 select-none bg-neutral-800/90 backdrop-blur-md p-[8px] rounded-full border border-neutral-700 shadow-xl">
-              
-              {/* 1. Pull (Zoom Toggle) */}
-              <button
-                type="button"
-                onClick={() => setZoomLevel((prev) => (prev === 1 ? 1.5 : prev === 1.5 ? 2 : 1))}
-                className={`w-[40px] h-[40px] rounded-full flex items-center justify-center text-white cursor-pointer transition-all border border-neutral-650 active:scale-90 ${zoomLevel > 1 ? 'bg-white text-black border-white' : 'bg-neutral-900 hover:bg-neutral-850'}`}
-                title={`Puxar zoom: ${zoomLevel}x`}
-              >
-                <ZoomIn className={`w-5 h-5 ${zoomLevel > 1 ? 'text-black' : 'text-white'}`} strokeWidth={3} />
-              </button>
 
-              {/* 2. Sneakers Guide sticker overlay toggle */}
-              <button
-                type="button"
-                onClick={() => setShowSneakerOverlay((prev) => !prev)}
-                className={`w-[40px] h-[40px] rounded-full flex items-center justify-center text-white cursor-pointer transition-all border border-neutral-650 active:scale-90 ${showSneakerOverlay ? 'bg-white text-black border-white' : 'bg-neutral-900 hover:bg-neutral-850'}`}
-                title="Guia de sapatilhas"
-              >
-                <Footprints className={`w-5 h-5 ${showSneakerOverlay ? 'text-black' : 'text-white'}`} strokeWidth={3} />
-              </button>
-
-              {/* 3. Photos edit / slider filter mode */}
-              <button
-                type="button"
-                onClick={() => setExposureMode((prev) => prev === "natural" ? "vivid" : prev === "vivid" ? "studio" : "natural")}
-                className={`w-[40px] h-[40px] rounded-full flex items-center justify-center text-white cursor-pointer transition-all border border-neutral-650 active:scale-90 ${exposureMode !== "natural" ? 'bg-white text-black border-white' : 'bg-neutral-900 hover:bg-neutral-850'}`}
-                title={`Exposição: ${exposureMode}`}
-              >
-                <Sliders className={`w-5 h-5 ${exposureMode !== "natural" ? 'text-black' : 'text-white'}`} strokeWidth={3} />
-              </button>
-
-              {/* 4. Beauty Filter soft blur & skin glow mode */}
-              <button
-                type="button"
-                onClick={() => setBeautyOn((prev) => !prev)}
-                className={`w-[40px] h-[40px] rounded-full flex items-center justify-center text-white cursor-pointer transition-all border border-neutral-650 active:scale-90 ${beautyOn ? 'bg-white text-black border-white' : 'bg-neutral-900 hover:bg-neutral-850'}`}
-                title="Filtro beleza"
-              >
-                <Wand2 className={`w-5 h-5 ${beautyOn ? 'text-black' : 'text-white'}`} strokeWidth={3} />
-              </button>
-
-            </div>
 
             {/* Tactical Grid Brackets overlay for precision framing */}
             <div className="absolute inset-[32px] pointer-events-none z-10 opacity-30">

@@ -25,6 +25,9 @@ import {
   Bell,
   HelpCircle,
   ShieldAlert,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Bug,
 } from "lucide-react";
 
 import { supabase } from "./lib/supabase";
@@ -83,66 +86,130 @@ export default function App() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [allProfiles, setAllProfiles] = useState<any[]>([]);
+  const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
   const authCheckedRef = useRef(false);
   const activeScreenRef = useRef(activeScreen);
 
+  const formatText = (str: string) => {
+    if (!str) return "";
+    return str
+      .split(/\s+/)
+      .map((word) => {
+        if (!word) return "";
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(" ");
+  };
+
+  useEffect(() => {
+    const fetchAllProfiles = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, name, avatar_url, followed_sellers");
+        if (data) {
+          setAllProfiles(data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar perfis na barra lateral:", err);
+      }
+    };
+
+    fetchAllProfiles();
+
+    const channel = supabase
+      .channel("sidebar_profiles_realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+        fetchAllProfiles();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   useEffect(() => {
     activeScreenRef.current = activeScreen;
+    if (activeScreen) {
+      window.location.hash = activeScreen;
+    }
   }, [activeScreen]);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace("#", "");
+      if (hash && hash !== activeScreenRef.current) {
+        const validScreens = [
+          "feed", "alerts", "chat", "profile", "showcase", "following", "settings", 
+          "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies"
+        ];
+        if (validScreens.includes(hash)) {
+          setActiveScreen(hash);
+        }
+      }
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    
+    // Set initial activeScreen from hash if present on mount
+    const initialHash = window.location.hash.replace("#", "");
+    if (initialHash) {
+      const validScreens = [
+        "feed", "alerts", "chat", "profile", "showcase", "following", "settings", 
+        "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies"
+      ];
+      if (validScreens.includes(initialHash)) {
+        setActiveScreen(initialHash);
+      }
+    }
+
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
 
-    const initAuth = async () => {
+    async function initAuth() {
       try {
-        const { data } = await supabase.auth.getSession();
-        if (!mounted) return;
-
-        const sessionUser = data?.session?.user || null;
-        if (sessionUser) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (mounted) {
+          const sessionUser = session?.user || null;
           setUser(sessionUser);
-          setIsLoggedIn(true);
-        }
-      } catch (err) {
-        console.error("Auth init error:", err);
-      }
-      
-      // Fallback: if after 5 seconds onAuthStateChange hasn't fired, 
-      // mark as checked anyway so the app doesn't hang on splash
-      setTimeout(() => {
-        if (mounted && !authCheckedRef.current) {
-          console.warn("Auth check fallback triggered");
+          setIsLoggedIn(!!sessionUser);
           setAuthChecked(true);
           authCheckedRef.current = true;
         }
-      }, 5000);
-    };
+      } catch (err) {
+        console.error("Auth init error:", err);
+        if (mounted) {
+          setAuthChecked(true);
+          authCheckedRef.current = true;
+        }
+      }
+    }
 
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
-      console.log(`[AUTH] Evento: ${event}`, !!session);
+      // Ignorar atualizações de token para evitar loops de renderização e recriação de canais
+      if (event === 'TOKEN_REFRESHED') return;
 
       const currentUser = session?.user || null;
       
       setUser(currentUser);
       setIsLoggedIn(!!currentUser);
 
-      // Se for um evento de logout real (sem sessão e sem token no storage)
-      if (event === 'SIGNED_OUT' && !currentUser) {
+      if (event === 'SIGNED_OUT') {
         const publicScreens = ["signin", "signup", "recovery", "onboarding"];
         if (!publicScreens.includes(activeScreenRef.current)) {
-          let hasToken = false;
-          try {
-            hasToken = !!localStorage.getItem('boladas-auth-token');
-          } catch(e) {}
-          
-          if (!hasToken) {
-            console.log("[AUTH] Redirecionando para login (Logout confirmado)");
-            setActiveScreen("signin");
-          }
+          console.log("[AUTH] Logout detectado, redirecionando para Login");
+          setActiveScreen("signin");
         }
       }
 
@@ -157,46 +224,29 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    let mounted = true;
-    // Proactive protection: if auth check is done and we are not logged in, 
-    // and we are NOT on a public/auth screen, redirect to signin.
-    const publicScreens = ["signin", "signup", "recovery", "onboarding"];
+    // Redirection protection
+    const publicScreens = ["signin", "signup", "recovery", "onboarding", "policies"];
     if (authChecked && !isLoggedIn && !publicScreens.includes(activeScreen)) {
-      // Usamos um delay proativo para evitar redirects em flashes de rede
-      const checkTimeout = setTimeout(() => {
-        if (!mounted) return;
-        
-        let hasToken = false;
-        try {
-          hasToken = !!localStorage.getItem('boladas-auth-token');
-        } catch (e) {
-          console.warn("localStorage inacessível", e);
-        }
-        
-        // Só redireciona se realmente não houver sinal de login após 3 segundos
-        if (!isLoggedIn && !hasToken && !publicScreens.includes(activeScreen)) {
-          console.log("[AUTH] Redirect proativo executado (Sem sessão detectada)");
-          setActiveScreen("signin");
-        }
-      }, 3000);
-
-      return () => {
-        mounted = false;
-        clearTimeout(checkTimeout);
-      };
+      setActiveScreen("signin");
     }
-    return () => {
-      mounted = false;
-    };
   }, [activeScreen, isLoggedIn, authChecked]);
 
   const handleSplashComplete = () => {
-    let hasToken = false;
-    try {
-      hasToken = !!localStorage.getItem('boladas-auth-token');
-    } catch(e) {}
+    const initialHash = window.location.hash.replace("#", "");
+    const validScreens = [
+      "feed", "alerts", "chat", "profile", "showcase", "following", "settings", 
+      "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies"
+    ];
+    if (initialHash && validScreens.includes(initialHash)) {
+      const isPublic = ["signin", "signup", "recovery", "onboarding", "policies"].includes(initialHash);
+      if (isLoggedIn || isPublic) {
+        setActiveScreen(initialHash);
+        setShowSplash(false);
+        return;
+      }
+    }
 
-    if (isLoggedIn || hasToken) {
+    if (isLoggedIn) {
       setActiveScreen("feed");
     } else {
       setActiveScreen("signin");
@@ -425,46 +475,163 @@ export default function App() {
     };
   }, []);
 
-  const toggleFollowSeller = async (sellerName: string) => {
+  const getOrderedProductsForFeed = () => {
+    if (!user || Object.keys(followedSellers).length === 0) {
+      return allProducts;
+    }
+    // Ordenar produtos: vendedores seguidos primeiro. Mantendo data ou visualizações como critério secundário.
+    return [...allProducts].sort((a, b) => {
+      const isASelected = !!followedSellers[a.sellerName] || (a.seller_id && !!followedSellers[a.seller_id]);
+      const isBSelected = !!followedSellers[b.sellerName] || (b.seller_id && !!followedSellers[b.seller_id]);
+
+      if (isASelected && !isBSelected) return -1;
+      if (!isASelected && isBSelected) return 1;
+      
+      if (sortByViews) {
+        return (b.views || 0) - (a.views || 0);
+      }
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateB - dateA;
+    });
+  };
+
+  const toggleFollowSeller = async (sellerNameOrId: string) => {
     if (!user) {
       setActiveScreen("signin");
       return;
     }
-    const isFollowing = !!followedSellers[sellerName];
-    const newFollowed = { ...followedSellers, [sellerName]: !isFollowing };
-    
+
+    // Tentar descobrir se o argumento é um UUID ou nome
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sellerNameOrId);
+    let sellerId = isUuid ? sellerNameOrId : null;
+    let sellerName = isUuid ? null : sellerNameOrId;
+
+    // Resolver Nome e ID com base nos produtos ou perfis
+    if (sellerId && !sellerName) {
+      const prod = allProducts.find(p => p.seller_id === sellerId);
+      if (prod) {
+        sellerName = prod.sellerName;
+      }
+    } else if (sellerName && !sellerId) {
+      const prod = allProducts.find(p => p.sellerName === sellerName);
+      if (prod) {
+        sellerId = prod.seller_id;
+      }
+    }
+
+    // Se ainda não resolveu e é UUID, vamos tentar buscar o nome do perfil
+    if (sellerId && !sellerName) {
+      try {
+        const { data } = await supabase.from('profiles').select('name').eq('id', sellerId).single();
+        if (data) {
+          sellerName = data.name;
+        }
+      } catch (err) {
+        console.error("Erro ao buscar nome do vendedor:", err);
+      }
+    }
+
+    const finalSellerId = sellerId;
+    const finalSellerName = sellerName || "Vendedor";
+
+    // Requisito 11: Não permitir que um usuário siga a si mesmo
+    if (finalSellerId && finalSellerId === user.id) {
+      alert("Não podes seguir o teu próprio perfil.");
+      return;
+    }
+
+    // Requisito 10: Evitar duplicados. Verificar se já segue
+    const key = finalSellerName;
+    const isFollowing = !!followedSellers[key] || (finalSellerId ? !!followedSellers[finalSellerId] : false);
+
+    // Estado otimista para atualização imediata (Requisito 1)
+    const newFollowed = { ...followedSellers };
+    if (isFollowing) {
+      delete newFollowed[key];
+      if (finalSellerId) delete newFollowed[finalSellerId];
+    } else {
+      newFollowed[key] = true;
+      if (finalSellerId) newFollowed[finalSellerId] = true;
+    }
+    setFollowedSellers(newFollowed);
+
     try {
-      const { error } = await supabase
+      // 1. Tentar salvar na tabela de follows se finalSellerId existir
+      let savedInFollowsTable = false;
+      if (finalSellerId) {
+        if (isFollowing) {
+          // Deixar de seguir
+          const { error } = await supabase
+            .from('follows')
+            .delete()
+            .eq('follower_id', user.id)
+            .eq('following_id', finalSellerId);
+          
+          if (!error) {
+            savedInFollowsTable = true;
+          } else {
+            console.warn("Erro ao deletar de follows (usando fallback):", error);
+          }
+        } else {
+          // Seguir
+          const { error } = await supabase
+            .from('follows')
+            .insert({
+              follower_id: user.id,
+              following_id: finalSellerId
+            });
+          
+          if (!error) {
+            savedInFollowsTable = true;
+          } else {
+            // Se for erro de restrição única (já existe), não lançar erro grave
+            if (error.code === '23505') {
+              savedInFollowsTable = true;
+            } else {
+              console.warn("Erro ao inserir em follows (usando fallback):", error);
+            }
+          }
+        }
+      }
+
+      // 2. Sempre manter sincronizado também na coluna JSONB de profiles para garantir compatibilidade completa
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({ followed_sellers: newFollowed })
         .eq('id', user.id);
-      
-      if (error) throw error;
 
-      // Find sellerId if possible
-      const sellerProduct = allProducts.find(p => p.sellerName === sellerName);
-      if (sellerProduct && sellerProduct.seller_id && sellerProduct.seller_id !== user.id) {
+      if (profileError && !savedInFollowsTable) {
+        throw profileError;
+      }
+
+      // Requisito 6: Criar notificações automáticas ("Fulano começou a seguir você.")
+      if (!isFollowing && finalSellerId && finalSellerId !== user.id) {
         const { sendNotification } = await import("./lib/notifications");
         await sendNotification({
-          userId: sellerProduct.seller_id,
+          user_id: finalSellerId,
           type: "follow",
           title: "Novo seguidor",
-          description: `${userProfile?.name || "Alguém"} começou a seguir seu perfil.`,
+          description: `${userProfile?.name || "Alguém"} começou a seguir o teu perfil.`,
           senderId: user.id
         });
       }
-    } catch (e) {
+
+    } catch (e: any) {
       console.error("Erro completo ao seguir vendedor:", e);
+      // Reverter estado local em caso de erro real (Tratamento de erros - Requisito 13)
+      setFollowedSellers(followedSellers);
+      alert("Falha de ligação ao tentar seguir o vendedor. Por favor, tenta novamente.");
     }
   };
 
-  const toggleBookmark = async (productId: string) => {
+  const toggleBookmark = async (product_id: string) => {
     if (!user) {
       setActiveScreen("signin");
       return;
     }
-    const isBookmarked = !!bookmarks[productId];
-    const newBookmarks = { ...bookmarks, [productId]: !isBookmarked };
+    const isBookmarked = !!bookmarks[product_id];
+    const newBookmarks = { ...bookmarks, [product_id]: !isBookmarked };
 
     try {
       const { error } = await supabase
@@ -475,16 +642,16 @@ export default function App() {
       if (error) throw error;
 
       // Notify product owner
-      const product = allProducts.find(p => p.id === productId);
+      const product = allProducts.find(p => p.id === product_id);
       if (product && product.seller_id && product.seller_id !== user.id) {
         const { sendNotification } = await import("./lib/notifications");
         await sendNotification({
-          userId: product.seller_id,
+          user_id: product.seller_id,
           type: "like",
           title: "Interesse no seu produto",
           description: `${userProfile?.name || "Alguém"} favoritou o seu produto ${product.name}.`,
           productName: product.name,
-          productId: product.id,
+          product_id: product.id,
           senderId: user.id
         });
       }
@@ -494,6 +661,7 @@ export default function App() {
   };
 
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
   const [newProductImages, setNewProductImages] = useState<string[]>([]);
   const [newProductPhone, setNewProductPhone] = useState("+55 (11) 99888-7711");
   
@@ -519,12 +687,12 @@ export default function App() {
     if (!selectedProduct) return;
 
     try {
-      const sellerId = selectedProduct.seller_id || null;
+      const seller_id = selectedProduct.seller_id || null;
       const sellerName = selectedProduct.sellerName || "Vendedor";
       const sellerImg = selectedProduct.sellerAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80";
 
       const conversaId = await createOrGetConversation(
-        sellerId,
+        seller_id,
         sellerName,
         sellerImg,
         selectedProduct
@@ -541,18 +709,40 @@ export default function App() {
     }
   };
 
+  const handleStartChatWithUser = async (targetUserId: string, targetUserName: string, targetUserAvatar: string, initialProduct: any = null) => {
+    if (!user) {
+      setActiveScreen("signin");
+      return;
+    }
+    try {
+      const conversaId = await createOrGetConversation(
+        targetUserId,
+        targetUserName,
+        targetUserAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80",
+        initialProduct
+      );
+      setActiveChatId(conversaId);
+      setActiveScreen("chat");
+    } catch (err) {
+      console.error("Erro ao iniciar conversa:", err);
+    }
+  };
+
   // Quick navigation config in Portuguese with Sentence Case
   const SCREENS = [
-    { id: "feed", name: "1. Início", category: "Feeds principais", icon: Home },
-    { id: "alerts", name: "2. Alertas", category: "Feeds principais", icon: Bell },
-    { id: "chat", name: "3. Chat", category: "Canais e comunicações", icon: MessageCircle },
-    { id: "profile", name: "4. Meu perfil", category: "Perfis", icon: User },
-    { id: "showcase", name: "5. Showcase", category: "Perfis", icon: Eye },
-    { id: "following", name: "6. Seguindo", category: "Perfis", icon: Users },
-    { id: "settings", name: "7. Definições", category: "Configuração", icon: Settings },
-    { id: "signin", name: "8. Entrar", category: "Portais de acesso", icon: Lock },
-    { id: "signup", name: "9. Cadastrar", category: "Portais de acesso", icon: UserPlus },
-    { id: "recovery", name: "10. Recuperar acesso", category: "Portais de acesso", icon: RefreshCw },
+    { id: "feed", name: "Início", category: "Feeds principais", icon: Home },
+    { id: "alerts", name: "Alertas", category: "Feeds principais", icon: Bell },
+    { id: "chat", name: "Chat", category: "Canais e comunicações", icon: MessageCircle },
+    { id: "profile", name: "Meu perfil", category: "Perfis", icon: User },
+    { id: "showcase", name: "Showcase", category: "Perfis", icon: Eye },
+    { id: "following", name: "Seguindo", category: "Perfis", icon: Users },
+    { id: "settings", name: "Definições", category: "Configuração", icon: Settings },
+    { id: "suporte_ajuda", name: "Suporte e ajuda", category: "Configuração", icon: HelpCircle },
+    { id: "bugs", name: "Informar bug", category: "Configuração", icon: Bug },
+    { id: "denuncias", name: "Painel de denúncias", category: "Configuração", icon: ShieldAlert },
+    { id: "signin", name: "Entrar", category: "Portais de acesso", icon: Lock },
+    { id: "signup", name: "Cadastrar", category: "Portais de acesso", icon: UserPlus },
+    { id: "recovery", name: "Recuperar acesso", category: "Portais de acesso", icon: RefreshCw },
   ];
 
   const isHeaderHidden = activeScreen === "bugs" || activeScreen === "denuncias" || activeScreen === "chat" || activeScreen === "anunciar" || activeScreen === "signin" || activeScreen === "signup" || activeScreen === "recovery" || activeScreen === "onboarding" || activeScreen === "profile" || activeScreen === "settings" || activeScreen === "policies" || activeScreen === "alerts" || activeScreen === "menu";
@@ -612,7 +802,7 @@ export default function App() {
             ) : (
               /* Standard Header Layout */
               <>
-                <div className="flex items-center gap-[5px]">
+                <div className="flex items-center gap-[8px]">
                   <div className="flex items-center h-[30px] select-none">
                     <img
                       src="/logo-top.pnp.png"
@@ -635,28 +825,6 @@ export default function App() {
                       }}
                     />
                   </div>
-                </div>
-
-                {/* Central Top Navigation Tabs */}
-                <div className="hidden md:flex items-center gap-[8px] mr-[16px]">
-                  <button 
-                    onClick={() => {
-                      setActiveScreen("feed");
-                      setIsSearchFocused(false);
-                    }}
-                    className={`text-[13px] font-medium transition-opacity ${activeScreen === "feed" && !isSearchFocused ? "text-white" : "text-zinc-500 hover:text-white"}`}>
-                    Início
-                  </button>
-                  <button 
-                    onClick={() => setActiveScreen("alerts")}
-                    className={`text-[13px] font-medium transition-opacity ${activeScreen === "alerts" ? "text-white" : "text-zinc-500 hover:text-white"}`}>
-                    Alertas
-                  </button>
-                  <button 
-                    onClick={() => setActiveScreen("chat")}
-                    className={`text-[13px] font-medium transition-opacity ${activeScreen === "chat" ? "text-white" : "text-zinc-500 hover:text-white"}`}>
-                    Chat
-                  </button>
                 </div>
 
                 {/* Central Top Search Bar (Desktop only, with 1.5px border, 8px rounded corners and subtle grey background) */}
@@ -685,33 +853,33 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Right side icons with bold stroke and 5px separation */}
-                <div className="flex items-center gap-[5px]">
-                  <button
-                    onClick={() => {
-                      setActiveScreen("feed");
-                      setIsSearchFocused(true);
+                {/* Right side placeholder */}
+                <div className="flex items-center gap-[8px]">
+                  <a
+                    href="#anunciar"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setActiveScreen("anunciar");
                     }}
-                    className="w-8 h-8 flex items-center justify-center text-white hover:opacity-80 transition-opacity cursor-pointer bg-transparent border-none"
-                    title="Buscar"
+                    className="hidden md:flex items-center gap-[6px] px-[12px] py-[6px] bg-white text-black hover:bg-zinc-200 transition-colors rounded-[8px] no-underline font-hanken font-bold text-[13px] cursor-pointer shadow-md"
+                    title="Subir"
                   >
-                    <Search className="w-5 h-5 text-white" strokeWidth={2.5} />
-                  </button>
-                  <button
-                    onClick={() => setActiveScreen("following")}
-                    className={`w-8 h-8 flex items-center justify-center text-white hover:opacity-80 transition-opacity cursor-pointer bg-transparent border-none ${activeScreen === "following" ? "scale-105" : "opacity-80"} relative`}
-                    title="Seguindo"
-                  >
-                    <Users className="w-5 h-5 text-white" strokeWidth={2.5} />
-                    <span className="absolute top-[4px] right-[4px] w-2 h-2 rounded-full bg-pink-500 border border-black animate-pulse" />
-                  </button>
-                  <button
-                    onClick={() => setActiveScreen("menu")}
-                    className="w-8 h-8 flex items-center justify-center text-white hover:opacity-80 transition-opacity cursor-pointer bg-transparent border-none"
-                    title="Menu"
-                  >
-                    <Menu className="w-5 h-5 text-white" strokeWidth={3.5} />
-                  </button>
+                    <Plus className="w-[16px] h-[16px]" strokeWidth={3} />
+                    Subir
+                  </a>
+                  {!isSidebarHidden && (
+                    <button
+                      onClick={() => setIsLeftSidebarCollapsed(!isLeftSidebarCollapsed)}
+                      className="hidden md:flex items-center justify-center w-8 h-8 rounded-[8px] hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all cursor-pointer shadow-none"
+                      title={isLeftSidebarCollapsed ? "Abrir barra lateral" : "Fechar barra lateral"}
+                    >
+                      {isLeftSidebarCollapsed ? (
+                        <PanelLeftOpen className="w-[18px] h-[18px] text-current" strokeWidth={2.5} />
+                      ) : (
+                        <PanelLeftClose className="w-[18px] h-[18px] text-current" strokeWidth={2.5} />
+                      )}
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -722,71 +890,124 @@ export default function App() {
       {/* 2. Responsive Side-by-Side Main Layout Grid (Capped to max-7xl) - strict 5px column gap */}
       <div className={`w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-[5px] transition-all duration-300 ${isHeaderHidden ? "pt-1 md:pt-2" : "pt-12"} min-h-screen ${isSidebarHidden ? "justify-center" : ""}`}>
         {/* Left Sticky Sidebar for Desktop Viewports */}
-        {!isSidebarHidden && (
+        {!isSidebarHidden && !isLeftSidebarCollapsed && (
           <aside className={`hidden md:flex w-64 shrink-0 flex-col gap-[5px] self-start sticky ${isHeaderHidden ? "top-1 h-[calc(100vh-10px)]" : "top-12 h-[calc(100vh-48px)]"} overflow-y-auto no-scrollbar p-[5px]`}>
-          {/* User Profile Info block */}
-          <div 
-            className="bg-zinc-950 p-[12px] flex items-center gap-[5px] rounded-[10px] cursor-pointer hover:bg-zinc-900 transition-colors"
-            onClick={() => setActiveScreen("profile")}
-          >
-            <img
-              src={userProfile?.avatar || user?.photoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
-              alt={userProfile?.name || user?.displayName || "Usuário"}
-              className="w-9 h-9 rounded-[8px] object-cover shrink-0"
-            />
-            <div className="flex flex-col min-w-0 leading-tight">
-              <span className="font-hanken text-[12px] font-black text-white truncate">
-                {userProfile?.name || user?.displayName || "Usuário"}
-              </span>
-              <span className="font-hanken text-[9px] text-zinc-500 font-extrabold uppercase tracking-wider">Verificado</span>
-            </div>
-          </div>
-
-          {/* Quick Announcement Trigger */}
-          <button
-            onClick={() => {
-              setActiveScreen("anunciar");
-            }}
-            className="w-full bg-zinc-500 text-white py-[7px] rounded-[10px] hover:bg-zinc-600 transition-all active:scale-[0.97] cursor-pointer flex items-center justify-center leading-none shadow-lg"
-          >
-            <Plus className="w-[16px] h-[16px] text-white shrink-0" strokeWidth={5.5} />
-          </button>
-
           {/* Sidebar Navigation Items list - strict 5px vertical separation */}
           <div className="flex flex-col gap-[5px]">
+            {/* Top Items (with background) */}
             {SCREENS.filter(
               (screen) =>
-                screen.id !== "settings" &&
                 screen.id !== "signin" &&
                 screen.id !== "signup" &&
-                screen.id !== "recovery"
+                screen.id !== "recovery" &&
+                screen.category !== "Configuração"
             ).map((screen) => {
               const ScreenIcon = screen.icon;
               const isActive = activeScreen === screen.id;
               const hasAlerts = screen.id === "alerts" && unreadAlertsCount > 0;
               return (
-                <button
+                <a
                   key={screen.id}
-                  onClick={() => setActiveScreen(screen.id)}
-                  className={`flex items-center justify-between w-full px-3 py-2.5 rounded-[8px] text-left transition-all duration-150 font-hanken text-[11px] uppercase tracking-wider font-medium cursor-pointer active:scale-[0.98] ${
+                  href={`#${screen.id}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setViewingProfileUserId(null);
+                    setSettingsSubView(null);
+                    setActiveScreen(screen.id);
+                  }}
+                  className={`flex items-center justify-between w-full px-4 py-3 rounded-[10px] text-left transition-all duration-150 font-hanken text-[13px] font-bold cursor-pointer active:scale-[0.98] no-underline ${
                     isActive
-                      ? "bg-zinc-900 text-white font-medium border-l-[3.5px] border-white pl-[8.5px]"
-                      : "text-neutral-400 hover:text-white hover:bg-zinc-900/50"
+                      ? "bg-zinc-850 text-white border-l-[4px] border-white pl-[12px]"
+                      : "text-white bg-zinc-950/25 hover:bg-zinc-800"
                   }`}
                 >
                   <div className="flex items-center gap-[8px] min-w-0">
-                    <ScreenIcon className={`w-3.5 h-3.5 shrink-0 ${hasAlerts ? "text-rose-500 fill-rose-500/20" : "text-white"}`} strokeWidth={isActive ? 2.5 : 2.0} />
+                    <ScreenIcon className={`w-5 h-5 shrink-0 ${hasAlerts ? "text-rose-500 fill-rose-500/20" : "text-white"}`} strokeWidth={isActive ? 2.5 : 2.0} />
                     <span className="truncate">{screen.name}</span>
                   </div>
                   {hasAlerts && (
-                    <span className="bg-rose-500 text-white text-[9px] font-black px-[4px] py-[1px] rounded-full min-w-[16px] text-center shrink-0">
+                    <span className="bg-rose-500 text-white text-[10px] font-black px-[6px] py-[2px] rounded-full min-w-[20px] text-center shrink-0">
                       {unreadAlertsCount}
                     </span>
                   )}
-                </button>
+                </a>
+              );
+            })}
+
+            {/* Gray Divider Line */}
+            <div className="border-t border-zinc-800/60 my-[5px] mx-1" />
+
+            {/* Bottom Items (without background - "Definições" downwards) */}
+            {SCREENS.filter(
+              (screen) =>
+                screen.id !== "signin" &&
+                screen.id !== "signup" &&
+                screen.id !== "recovery" &&
+                screen.category === "Configuração"
+            ).map((screen) => {
+              const ScreenIcon = screen.icon;
+              const isActive = 
+                screen.id === "suporte_ajuda" 
+                  ? (activeScreen === "settings" && settingsSubView === "help")
+                  : screen.id === "settings"
+                    ? (activeScreen === "settings" && settingsSubView !== "help")
+                    : activeScreen === screen.id;
+              return (
+                <a
+                  key={screen.id}
+                  href={`#${screen.id}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (screen.id === "suporte_ajuda") {
+                      setSettingsSubView("help");
+                      setActiveScreen("settings");
+                    } else if (screen.id === "settings") {
+                      setSettingsSubView(null);
+                      setActiveScreen("settings");
+                    } else {
+                      setSettingsSubView(null);
+                      setActiveScreen(screen.id);
+                    }
+                  }}
+                  className={`flex items-center justify-between w-full px-4 py-3 rounded-[10px] text-left transition-all duration-150 font-hanken text-[13px] font-bold cursor-pointer active:scale-[0.98] no-underline ${
+                    isActive
+                      ? "bg-transparent text-white border-l-[4px] border-white pl-[12px]"
+                      : "text-zinc-400 bg-transparent hover:text-white hover:bg-zinc-900/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-[8px] min-w-0">
+                    <ScreenIcon className="w-5 h-5 shrink-0 text-current" strokeWidth={isActive ? 2.5 : 2.0} />
+                    <span className="truncate">{screen.name}</span>
+                  </div>
+                </a>
               );
             })}
           </div>
+
+          <div className="flex-1" />
+
+          {/* User Profile Footer */}
+          <a
+            href="#profile"
+            onClick={(e) => {
+              e.preventDefault();
+              setViewingProfileUserId(null);
+              setActiveScreen("profile");
+            }}
+            className="flex items-center gap-[8px] p-[10px] mt-auto rounded-[10px] hover:bg-zinc-900/50 transition-colors cursor-pointer no-underline group"
+          >
+            <img
+              src={userProfile?.avatar || user?.photoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
+              alt={userProfile?.name || user?.displayName || "Usuário"}
+              className="w-10 h-10 rounded-full object-cover shrink-0 border border-zinc-800"
+            />
+            <div className="flex flex-col min-w-0 leading-tight">
+              <span className="font-hanken text-[13px] font-bold text-white truncate group-hover:text-zinc-300 transition-colors">
+                {userProfile?.name || user?.displayName || "Usuário"}
+              </span>
+              <span className="font-hanken text-[10px] text-zinc-500 truncate">Meu perfil</span>
+            </div>
+          </a>
         </aside>
       )}
 
@@ -794,7 +1015,7 @@ export default function App() {
         <main className={`flex-1 w-full min-w-0 ${isHeaderHidden ? "pb-[5px]" : "pb-16"} px-[2px] flex flex-col gap-[5px]`}>
           {(activeScreen === "feed" || activeScreen === "search") && (
             <FeedScreen
-              products={allProducts}
+              products={getOrderedProductsForFeed()}
               loading={loadingProducts}
               onSelectProduct={(p) => {
                 setSelectedProduct(p);
@@ -820,11 +1041,15 @@ export default function App() {
               onSendMessage={handleSendMessageToSeller}
               allProducts={allProducts}
               onSelectProduct={setSelectedProduct}
-              isFollowed={!!followedSellers[selectedProduct?.sellerName]}
+              isFollowed={selectedProduct && (!!followedSellers[selectedProduct.sellerName] || (selectedProduct.seller_id && !!followedSellers[selectedProduct.seller_id]))}
               onToggleFollowSeller={toggleFollowSeller}
               isBookmarked={!!bookmarks[selectedProduct?.id]}
               onToggleBookmark={toggleBookmark}
               currentUser={user}
+              onViewSellerProfile={(sellerId) => {
+                setViewingProfileUserId(sellerId);
+                setActiveScreen("profile");
+              }}
             />
           )}
           {activeScreen === "chat" && (
@@ -846,7 +1071,19 @@ export default function App() {
           {activeScreen === "profile" && (
             <ProfileScreen
               currentUser={user}
-              onBack={() => setActiveScreen("feed")}
+              userId={user?.id}
+              targetId={viewingProfileUserId || user?.id}
+              followedSellers={followedSellers}
+              onToggleFollow={toggleFollowSeller}
+              onStartConversation={handleStartChatWithUser}
+              onBack={() => {
+                if (viewingProfileUserId) {
+                  setViewingProfileUserId(null);
+                  setActiveScreen("product_detail");
+                } else {
+                  setActiveScreen("feed");
+                }
+              }}
               onSelectProduct={(p) => {
                 setSelectedProduct(p);
                 setActiveScreen("product_detail");
@@ -862,6 +1099,11 @@ export default function App() {
                 setSelectedProduct(p);
                 setActiveScreen("product_detail");
               }}
+              onViewSellerProfile={(sellerId) => {
+                setViewingProfileUserId(sellerId);
+                setActiveScreen("profile");
+              }}
+              currentUser={user}
             />
           )}
           {activeScreen === "showcase" && <ShowcaseScreen />}
@@ -885,6 +1127,15 @@ export default function App() {
                 
                 // Add to feed instantly without reloading
                 setAllProducts((prev) => [formatted, ...prev]);
+
+                // Notify followers about new product post (Requisito 6)
+                if (user && formatted.id) {
+                  import("./lib/notifications").then(({ notifyFollowersNewProduct }) => {
+                    notifyFollowersNewProduct(user.id, formatted.name, formatted.id);
+                  }).catch(err => {
+                    console.error("Erro ao enviar notificações aos seguidores:", err);
+                  });
+                }
                 
                 // Immediately open the newly created product detail screen
                 setSelectedProduct(formatted);
@@ -901,6 +1152,10 @@ export default function App() {
                 setSettingsSubView(null);
               }}
               initialSubView={settingsSubView}
+              onNavigate={(screenName) => {
+                setActiveScreen(screenName);
+                setSettingsSubView(null);
+              }}
             />
           )}
           {activeScreen === "alerts" && (
@@ -983,24 +1238,126 @@ export default function App() {
             <RecoveryScreen onBackToLogin={() => setActiveScreen("signin")} />
           )}
         </main>
+
+        {/* Right Sticky Sidebar for Desktop Viewports */}
+        {!isSidebarHidden && (
+          <aside className={`hidden lg:flex w-64 md:w-72 shrink-0 flex-col gap-[8px] self-start sticky ${isHeaderHidden ? "top-1 h-[calc(100vh-10px)]" : "top-12 h-[calc(100vh-48px)]"} overflow-y-auto no-scrollbar p-[5px]`}>
+            <div className="bg-zinc-950 p-[12px] rounded-[10px] flex flex-col gap-[5px] border border-zinc-800/10 shadow-lg">
+              <h3 className="font-hanken text-[12px] font-bold tracking-wider text-zinc-400 capitalize">
+                {(() => {
+                  const hasFollowed = allProfiles.some(p => (!user || p.id !== user.id) && (followedSellers[p.id] === true || followedSellers[p.name] === true));
+                  return hasFollowed ? "Vendedores Seguidos" : "Sugestões De Seguido";
+                })()}
+              </h3>
+              
+              <div className="flex flex-col gap-[5px]">
+                {(() => {
+                  const followedList = allProfiles.filter(p => (!user || p.id !== user.id) && (followedSellers[p.id] === true || followedSellers[p.name] === true));
+                  const displayList = followedList.length > 0 
+                    ? followedList 
+                    : allProfiles.filter(p => !user || p.id !== user.id).slice(0, 5);
+
+                  if (displayList.length === 0) {
+                    return (
+                      <span className="font-hanken text-[11px] text-zinc-500 py-1 capitalize">Nenhum perfil disponível</span>
+                    );
+                  }
+
+                  return displayList.slice(0, 5).map((profile) => {
+                    const isFollowing = followedSellers[profile.id] === true || followedSellers[profile.name] === true;
+                    return (
+                      <div 
+                        key={profile.id}
+                        className="flex items-center justify-between gap-[5px] p-[6px] hover:bg-zinc-900 rounded-[8px] transition-colors"
+                      >
+                        <div 
+                          onClick={() => {
+                            setViewingProfileUserId(profile.id);
+                            setActiveScreen("profile");
+                          }}
+                          className="flex items-center gap-[5px] min-w-0 cursor-pointer flex-1"
+                        >
+                          <img
+                            src={profile.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
+                            alt={profile.name}
+                            className="w-8 h-8 rounded-full object-cover shrink-0 border border-zinc-850"
+                          />
+                          <div className="flex flex-col min-w-0 leading-tight">
+                            <span className="font-hanken text-[12px] font-semibold text-white truncate hover:underline capitalize">
+                              {profile.name}
+                            </span>
+                            <span className="font-hanken text-[9px] text-zinc-500 font-extrabold uppercase tracking-wider">
+                              {isFollowing ? "Seguindo" : "Sugerido"}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={() => toggleFollowSeller(profile.id || profile.name)}
+                          className={`text-[9px] font-bold px-[10px] py-[4px] rounded-[6px] transition-all active:scale-95 border cursor-pointer ${
+                            isFollowing 
+                              ? "bg-zinc-900 hover:bg-rose-950/20 hover:text-rose-400 text-zinc-400 border-zinc-800 hover:border-rose-900/40"
+                              : "bg-white text-zinc-950 hover:bg-zinc-200 border-transparent"
+                          }`}
+                        >
+                          {isFollowing ? "Seguindo" : "Seguir"}
+                        </button>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+
+            {selectedProduct && (
+              <div className="bg-zinc-950 p-[12px] rounded-[10px] flex flex-col gap-[8px] border border-zinc-800/10 shadow-lg">
+                <div className="flex flex-col gap-[4px]">
+                  <h1 className="font-chivo text-[15px] font-black text-white capitalize leading-tight">
+                    {selectedProduct.name}
+                  </h1>
+                  <span className="font-chivo text-[15px] font-black text-emerald-400">
+                    {selectedProduct.price}
+                  </span>
+                </div>
+                
+                <div className="flex flex-col gap-[4px] bg-zinc-900/50 p-[8px] rounded-[8px]">
+                  <h3 className="font-chivo text-[13px] font-black text-neutral-200 capitalize">
+                    Descrição
+                  </h3>
+                  <p className="font-hanken text-[12px] text-neutral-300 leading-relaxed capitalize">
+                    {selectedProduct.desc || "Item de alta performance sem descrição detalhada informada."}
+                  </p>
+                </div>
+              </div>
+            )}
+          </aside>
+        )}
       </div>
 
       {/* 3. Mobile Navigation Bar (Fixed bottom, 64px height, hidden on desktop screens) */}
       {!isHeaderHidden && (
         <nav className="fixed bottom-0 w-full h-16 bg-zinc-900 flex md:hidden items-center justify-around px-2 z-40 max-w-md left-1/2 -translate-x-1/2 border-t border-zinc-800">
-          <button
-            className="flex flex-col items-center gap-1 py-1 transition-all text-white hover:opacity-90 animate-none cursor-pointer"
-            onClick={() => setActiveScreen("feed")}
+          <a
+            href="#feed"
+            className="flex flex-col items-center gap-1 py-1 transition-all text-white hover:opacity-90 animate-none cursor-pointer no-underline"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveScreen("feed");
+            }}
           >
             <Home className={`w-6 h-6 text-white ${activeScreen === "feed" ? "scale-105" : "opacity-80"}`} strokeWidth={2.5} />
             <span className={`text-[9px] font-medium font-hanken tracking-wider leading-none text-white ${activeScreen === "feed" ? "opacity-100" : "opacity-80"}`}>
               Início
             </span>
-          </button>
+          </a>
  
-          <button
-            className="flex flex-col items-center gap-1 py-1 transition-all text-white hover:opacity-90 animate-none cursor-pointer relative"
-            onClick={() => setActiveScreen("alerts")}
+          <a
+            href="#alerts"
+            className="flex flex-col items-center gap-1 py-1 transition-all text-white hover:opacity-90 animate-none cursor-pointer relative no-underline"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveScreen("alerts");
+            }}
           >
             <Bell className={`w-6 h-6 text-white ${activeScreen === "alerts" ? "scale-105 animate-pulse" : "opacity-80"} ${unreadAlertsCount > 0 ? "text-rose-500 fill-rose-500/20" : ""}`} strokeWidth={2.5} />
             {unreadAlertsCount > 0 && (
@@ -1011,22 +1368,30 @@ export default function App() {
             <span className={`text-[9px] font-medium font-hanken tracking-wider leading-none text-white ${activeScreen === "alerts" ? "opacity-100" : "opacity-80"}`}>
               Alertas
             </span>
-          </button>
+          </a>
  
           {/* Centralized Upload/Subir Button with wider black background, grey/white styling (no pink), perfectly vertically centered on the same line */}
-          <button
-            className={`flex items-center justify-center w-16 h-10 bg-black rounded-[8px] shadow-lg transition-all active:scale-95 duration-200 cursor-pointer border-t-2 border-t-white border-b-4 border-b-zinc-400 border-l border-l-white/40 border-r border-r-zinc-650/40 hover:brightness-110 ${
+          <a
+            href="#anunciar"
+            className={`flex items-center justify-center w-16 h-10 bg-black rounded-[8px] shadow-lg transition-all active:scale-95 duration-200 cursor-pointer border-t-2 border-t-white border-b-4 border-b-zinc-400 border-l border-l-white/40 border-r border-r-zinc-650/40 hover:brightness-110 no-underline ${
               activeScreen === "anunciar" ? "ring-2 ring-white ring-offset-2 ring-offset-zinc-900" : ""
             }`}
-            onClick={() => setActiveScreen("anunciar")}
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveScreen("anunciar");
+            }}
             title="Subir"
           >
             <Plus className="w-6 h-6 text-white" strokeWidth={3} />
-          </button>
+          </a>
  
-          <button
-            className="flex flex-col items-center gap-1 py-1 transition-all text-white hover:opacity-90 animate-none cursor-pointer relative"
-            onClick={() => setActiveScreen("chat")}
+          <a
+            href="#chat"
+            className="flex flex-col items-center gap-1 py-1 transition-all text-white hover:opacity-90 animate-none cursor-pointer relative no-underline"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveScreen("chat");
+            }}
           >
             <MessageCircle className={`w-6 h-6 text-white ${activeScreen === "chat" ? "scale-105" : "opacity-80"}`} strokeWidth={2.5} />
             {conversations.reduce((acc, c) => acc + (c.unread || 0), 0) > 0 && (
@@ -1037,17 +1402,22 @@ export default function App() {
             <span className={`text-[9px] font-medium font-hanken tracking-wider leading-none text-white ${activeScreen === "chat" ? "opacity-100" : "opacity-80"}`}>
               Chat
             </span>
-          </button>
+          </a>
  
-          <button
-            className="flex flex-col items-center gap-1 py-1 transition-all text-white hover:opacity-90 animate-none cursor-pointer"
-            onClick={() => setActiveScreen("profile")}
+          <a
+            href="#profile"
+            className="flex flex-col items-center gap-1 py-1 transition-all text-white hover:opacity-90 animate-none cursor-pointer no-underline"
+            onClick={(e) => {
+              e.preventDefault();
+              setViewingProfileUserId(null);
+              setActiveScreen("profile");
+            }}
           >
             <User className={`w-6 h-6 text-white ${activeScreen === "profile" ? "scale-105" : "opacity-80"}`} strokeWidth={2.5} />
             <span className={`text-[9px] font-medium font-hanken tracking-wider leading-none text-white ${activeScreen === "profile" ? "opacity-100" : "opacity-80"}`}>
               Perfil
             </span>
-          </button>
+          </a>
         </nav>
       )}
 
