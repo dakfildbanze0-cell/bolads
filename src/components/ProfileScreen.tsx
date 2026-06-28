@@ -13,6 +13,7 @@ interface ProfileScreenProps {
   followedSellers?: Record<string, boolean>;
   onToggleFollow?: (sellerName: string) => void;
   onStartConversation?: (sellerId: string | null, sellerName: string, sellerImg: string, productData?: any) => void;
+  onProfileUpdate?: (updatedProfile: any) => void;
 }
 
 export default function ProfileScreen({ 
@@ -23,7 +24,8 @@ export default function ProfileScreen({
   targetId: propTargetId,
   followedSellers = {},
   onToggleFollow,
-  onStartConversation
+  onStartConversation,
+  onProfileUpdate
 }: ProfileScreenProps) {
   const user = currentUser;
   const targetId = propTargetId || userId || currentUser?.id;
@@ -322,6 +324,17 @@ export default function ProfileScreen({
         .eq('id', user.id);
 
       if (error) throw error;
+      
+      if (onProfileUpdate) {
+        onProfileUpdate({
+          id: user.id,
+          name: editName.trim(),
+          bio: editBio.trim(),
+          avatar_url: finalAvatar,
+          location: editLocation.trim(),
+          phone: editPhone.trim(),
+        });
+      }
       
       setEditing(false);
     } catch (e) {

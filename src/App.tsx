@@ -428,8 +428,14 @@ export default function App() {
             bookmarks: {},
             onboarded: false
           };
-          const { error: insertError } = await supabase.from('profiles').insert(initialProfile);
-          if (insertError) throw insertError;
+          try {
+            const { error: insertError } = await supabase.from('profiles').insert(initialProfile);
+            if (insertError) {
+              console.warn("Aviso: Falha ao inserir registro inicial no banco (provável RLS), prosseguindo localmente:", insertError);
+            }
+          } catch (e) {
+            console.warn("Exceção ao inserir perfil inicial:", e);
+          }
           setUserProfile(initialProfile);
         } else if (error) {
           throw error;
@@ -1067,30 +1073,7 @@ export default function App() {
             })}
           </div>
 
-          <div className="flex-1" />
 
-          {/* User Profile Footer */}
-          <a
-            href="#profile"
-            onClick={(e) => {
-              e.preventDefault();
-              setViewingProfileUserId(null);
-              setActiveScreen("profile");
-            }}
-            className="flex items-center gap-[8px] p-[10px] mt-auto rounded-[10px] hover:bg-zinc-900/50 transition-colors cursor-pointer no-underline group"
-          >
-            <img
-              src={userProfile?.avatar || user?.photoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
-              alt={userProfile?.name || user?.displayName || "Usuário"}
-              className="w-10 h-10 rounded-full object-cover shrink-0 border border-zinc-800"
-            />
-            <div className="flex flex-col min-w-0 leading-tight">
-              <span className="font-hanken text-[13px] font-bold text-white truncate group-hover:text-zinc-300 transition-colors">
-                {userProfile?.name || user?.displayName || "Usuário"}
-              </span>
-              <span className="font-hanken text-[10px] text-zinc-500 truncate">Meu perfil</span>
-            </div>
-          </a>
         </aside>
       )}
 
@@ -1129,6 +1112,7 @@ export default function App() {
               isBookmarked={!!bookmarks[selectedProduct?.id]}
               onToggleBookmark={toggleBookmark}
               currentUser={user}
+              userProfile={userProfile}
               onViewSellerProfile={(sellerId) => {
                 setViewingProfileUserId(sellerId);
                 setActiveScreen("profile");
@@ -1170,6 +1154,12 @@ export default function App() {
               onSelectProduct={(p) => {
                 setSelectedProduct(p);
                 setActiveScreen("product_detail");
+              }}
+              onProfileUpdate={(updatedProfile) => {
+                setUserProfile((prev: any) => ({
+                  ...prev,
+                  ...updatedProfile
+                }));
               }}
             />
           )}
@@ -1239,6 +1229,12 @@ export default function App() {
                 setActiveScreen(screenName);
                 setSettingsSubView(null);
               }}
+              onProfileUpdate={(updatedProfile) => {
+                setUserProfile((prev: any) => ({
+                  ...prev,
+                  ...updatedProfile
+                }));
+              }}
             />
           )}
           {activeScreen === "alerts" && (
@@ -1285,7 +1281,8 @@ export default function App() {
             <OnboardingScreen
               user={user}
               userProfile={userProfile}
-              onComplete={() => {
+              onComplete={(updatedData) => {
+                setUserProfile(updatedData);
                 setActiveScreen("feed");
               }}
             />

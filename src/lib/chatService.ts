@@ -45,6 +45,20 @@ export async function createOrGetConversation(
   let buyerName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Comprador";
   let buyerAvatar = user.user_metadata?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80";
 
+  try {
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("name, avatar_url")
+      .eq("id", buyerId)
+      .single();
+    if (profileData) {
+      if (profileData.name) buyerName = profileData.name;
+      if (profileData.avatar_url) buyerAvatar = profileData.avatar_url;
+    }
+  } catch (err) {
+    console.warn("Could not fetch buyer profile for chat:", err);
+  }
+
   // If no seller ID exists (e.g. static products), use a deterministic string based on their name
   const final_seller_id = seller_id || `virtual_${sellerName.toLowerCase().replace(/\s+/g, "_")}`;
   

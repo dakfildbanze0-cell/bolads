@@ -36,6 +36,7 @@ interface ProductDetailScreenProps {
   allProducts?: any[];
   onSelectProduct?: (product: any) => void;
   currentUser?: any;
+  userProfile?: any;
   onViewSellerProfile?: (sellerId: string) => void;
 }
 
@@ -106,6 +107,7 @@ export default function ProductDetailScreen({
   allProducts = [],
   onSelectProduct,
   currentUser,
+  userProfile,
   onViewSellerProfile
 }: ProductDetailScreenProps) {
   const [activeImageIdx, setActiveImageIdx] = useState(0);
@@ -912,8 +914,8 @@ export default function ProductDetailScreen({
                 if (!newCommentText.trim()) return;
                 
                 try {
-                  const authorName = currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || "Membro";
-                  const authorAvatar = currentUser?.user_metadata?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80";
+                  const authorName = userProfile?.name || currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || "Membro";
+                  const authorAvatar = userProfile?.avatar_url || currentUser?.user_metadata?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80";
                   
                   const { error } = await supabase.from('comentarios').insert({
                     product_id: product.id,
@@ -1075,7 +1077,7 @@ export default function ProductDetailScreen({
                         seller_id: product.seller_id || "",
                         seller_name: product.seller_name || "",
                         reporter_id: currentUser?.id || "anonimo",
-                        reporter_name: currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || "Membro",
+                        reporter_name: userProfile?.name || currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || "Membro",
                         reason: reportReason,
                         details: reportDetails.trim()
                       });

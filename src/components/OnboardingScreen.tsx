@@ -6,7 +6,7 @@ import { uploadImage } from "../lib/supabase";
 interface OnboardingScreenProps {
   user: any;
   userProfile: any;
-  onComplete: () => void;
+  onComplete: (updatedData: any) => void;
 }
 
 export default function OnboardingScreen({ user, userProfile, onComplete }: OnboardingScreenProps) {
@@ -131,26 +131,48 @@ export default function OnboardingScreen({ user, userProfile, onComplete }: Onbo
         }
       }
 
-      const { error } = await supabase
+      const profilePayload = {
+        name: name.trim(),
+        phone: phone.trim(),
+        location: location.trim(),
+        bio: bio.trim(),
+        avatar_url: finalAvatar,
+        onboarded: true,
+        accepted_privacy: true,
+        privacy_accepted_at: new Date().toISOString(),
+        accepted_terms: true,
+        terms_accepted_at: new Date().toISOString()
+      };
+
+      const updatedProfile = {
+        ...userProfile,
+        id: user.id,
+        ...profilePayload
+      };
+
+      // 1. Try to update the profile
+      const { error: updateError } = await supabase
         .from('profiles')
-        .update({
-          name: name.trim(),
-          phone: phone.trim(),
-          location: location.trim(),
-          bio: bio.trim(),
-          avatar_url: finalAvatar,
-          onboarded: true,
-          accepted_privacy: true,
-          privacy_accepted_at: new Date().toISOString(),
-          accepted_terms: true,
-          terms_accepted_at: new Date().toISOString()
-        })
+        .update(profilePayload)
         .eq('id', user.id);
 
-      if (error) throw error;
-      onComplete();
-    } catch (error) {
-      console.error("Erro ao salvar perfil onboarding:", error);
+      if (updateError) {
+        console.warn("Erro no update de perfil, tentando upsert como alternativa:", updateError);
+        
+        // 2. Try upsert as fallback
+        const { error: upsertError } = await supabase
+          .from('profiles')
+          .upsert(updatedProfile);
+          
+        if (upsertError) {
+          throw new Error("Falha ao registar o perfil nas políticas do banco de dados: " + (upsertError.message || JSON.stringify(upsertError)));
+        }
+      }
+
+      onComplete(updatedProfile);
+    } catch (err: any) {
+      console.error("Erro ao salvar perfil onboarding:", err);
+      alert(err.message || "Não foi possível guardar os dados de perfil no banco de dados. Por favor, tente novamente ou verifique a sua ligação.");
     } finally {
       setSaving(false);
     }

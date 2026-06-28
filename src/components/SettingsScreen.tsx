@@ -33,6 +33,7 @@ interface SettingsScreenProps {
   userProfile?: any;
   user?: any;
   onNavigate?: (screenName: string) => void;
+  onProfileUpdate?: (updatedProfile: any) => void;
 }
 
 interface SettingsState {
@@ -124,7 +125,7 @@ const DEFAULT_SETTINGS: SettingsState = {
   dataSaving: false
 };
 
-export default function SettingsScreen({ onBack, initialSubView = null, userProfile, user, onNavigate }: SettingsScreenProps) {
+export default function SettingsScreen({ onBack, initialSubView = null, userProfile, user, onNavigate, onProfileUpdate }: SettingsScreenProps) {
   const [settings, setSettings] = useState<SettingsState>(() => {
     const saved = localStorage.getItem("boladas_settings");
     let state = DEFAULT_SETTINGS;
@@ -139,7 +140,7 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
       state = {
         ...state,
         fullName: userProfile.name || state.fullName,
-        avatar: userProfile.avatar || state.avatar,
+        avatar: userProfile.avatar_url || userProfile.avatar || state.avatar,
         email: user?.email || state.email
       };
     }
@@ -770,6 +771,15 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
                         .eq('id', user.id);
 
                       if (error) throw error;
+                      if (onProfileUpdate) {
+                        onProfileUpdate({
+                          name: settings.fullName,
+                          avatar_url: finalAvatar,
+                          phone: settings.phone,
+                          location: `${settings.city}, ${settings.province}`,
+                          bio: settings.bio
+                        });
+                      }
                       showToast("Perfil atualizado no banco de dados com sucesso");
                     } catch (err) {
                       console.error("Erro ao sincronizar perfil:", err);
