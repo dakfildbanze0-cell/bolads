@@ -90,6 +90,9 @@ export default function App() {
       "feed", "alerts", "chat", "profile", "showcase", "following", "settings", 
       "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies", "search", "product_detail", "onboarding"
     ];
+    if (hash === "termos" || hash === "privacidade") {
+      return "policies";
+    }
     if (validScreens.includes(hash)) return hash;
     if (hash.startsWith("product/")) return "product_detail";
     if (hash.startsWith("profile/")) return "profile";
@@ -102,7 +105,12 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
-  const [policyType, setPolicyType] = useState<"terms" | "privacy" | null>(null);
+  const [policyType, setPolicyType] = useState<"terms" | "privacy" | null>(() => {
+    const hash = window.location.hash.replace("#", "");
+    if (hash === "termos") return "terms";
+    if (hash === "privacidade") return "privacy";
+    return null;
+  });
   const [policiesBackScreen, setPoliciesBackScreen] = useState<string>("landing");
   const authCheckedRef = useRef(false);
   const activeScreenRef = useRef(activeScreen);
@@ -179,7 +187,7 @@ export default function App() {
           const productId = hash.split("/")[1];
           if (productId) {
             try {
-              const { data, error } = await supabase.from('produtos').select('*').eq('id', productId).single();
+              const { data, error } = await supabase.from('products').select('*').eq('id', productId).single();
               if (data && !error) {
                 setSelectedProduct(data);
                 setActiveScreen("product_detail");
@@ -257,7 +265,7 @@ export default function App() {
       setIsLoggedIn(!!currentUser);
 
       if (event === 'SIGNED_OUT') {
-        const publicScreens = ["landing", "signin", "signup", "recovery", "onboarding"];
+        const publicScreens = ["landing", "signin", "signup", "recovery", "onboarding", "policies", "termos", "privacidade", "product_detail", "profile"];
         if (!publicScreens.includes(activeScreenRef.current)) {
           console.log("[AUTH] Logout detectado, redirecionando para Login");
           setActiveScreen("landing");
@@ -276,7 +284,7 @@ export default function App() {
 
   useEffect(() => {
     // Redirection protection
-    const publicScreens = ["landing", "signin", "signup", "recovery", "onboarding", "policies"];
+    const publicScreens = ["landing", "signin", "signup", "recovery", "onboarding", "policies", "termos", "privacidade", "product_detail", "profile"];
     if (authChecked && !isLoggedIn && !publicScreens.includes(activeScreen)) {
       setActiveScreen("landing");
     }

@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, MessageSquare, Handshake, ArrowRight } from "lucide-react";
+import { Search, MessageSquare, Handshake, ArrowRight, ShieldCheck, Database, Bell, LayoutGrid } from "lucide-react";
 
 interface LandingScreenProps {
   onNavigate: (screen: string) => void;
@@ -66,8 +66,118 @@ export default function LandingScreen({ onNavigate, onOpenPolicies }: LandingScr
         </div>
       </section>
 
+      {/* Detailed Functionality Section (Funcionalidades Detalhadas) with max 16px spacing */}
+      <section className="py-[32px] px-4 bg-zinc-950 border-t border-zinc-900 relative flex flex-col items-center gap-[16px]">
+        <div className="max-w-4xl mx-auto flex flex-col items-center gap-[16px]">
+          <div className="text-center flex flex-col items-center gap-[8px]">
+            <h2 className="font-chivo text-[28px] md:text-[36px] font-black tracking-tight text-white">
+              Funcionalidades integradas
+            </h2>
+            <p className="text-zinc-400 text-[15px] max-w-xl">
+              Nossa plataforma disponibiliza recursos avançados projetados especificamente para acelerar suas vendas e garantir compras sem complicações.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px] w-full mt-[8px]">
+            <div className="bg-[#080808] border border-zinc-900 p-6 rounded-[20px] flex gap-[12px] hover:border-zinc-800 transition-colors">
+              <div className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-850 flex items-center justify-center text-white shrink-0">
+                <LayoutGrid className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col gap-[4px]">
+                <h4 className="font-chivo text-[16px] font-bold text-white">Classificação inteligente</h4>
+                <p className="text-zinc-400 text-[13px] leading-relaxed">
+                  Categorias organizadas desde eletrônicos, carros até imobiliária, facilitando que os clientes certos encontrem seu anúncio instantaneamente.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#080808] border border-zinc-900 p-6 rounded-[20px] flex gap-[12px] hover:border-zinc-800 transition-colors">
+              <div className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-850 flex items-center justify-center text-white shrink-0">
+                <MessageSquare className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col gap-[4px]">
+                <h4 className="font-chivo text-[16px] font-bold text-white">Chat interno em tempo real</h4>
+                <p className="text-zinc-400 text-[13px] leading-relaxed">
+                  Comunique-se diretamente pelo aplicativo de forma imediata e centralizada, mantendo suas negociações sob total controle.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#080808] border border-zinc-900 p-6 rounded-[20px] flex gap-[12px] hover:border-zinc-800 transition-colors">
+              <div className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-850 flex items-center justify-center text-white shrink-0">
+                <Bell className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col gap-[4px]">
+                <h4 className="font-chivo text-[16px] font-bold text-white">Alertas de interesse</h4>
+                <p className="text-zinc-400 text-[13px] leading-relaxed">
+                  Receba avisos instantâneos e notificações personalizadas assim que surgirem novas ofertas de produtos que você está monitorando.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#080808] border border-zinc-900 p-6 rounded-[20px] flex gap-[12px] hover:border-zinc-800 transition-colors">
+              <div className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-850 flex items-center justify-center text-white shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col gap-[4px]">
+                <h4 className="font-chivo text-[16px] font-bold text-white">Moderação ativa de anúncios</h4>
+                <p className="text-zinc-400 text-[13px] leading-relaxed">
+                  Garantimos anúncios legítimos com ferramentas de reporte e monitoramento proativo para evitar tentativas de fraude.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Transparent Data Usage Section (Transparência de Uso de Dados) with max 16px spacing */}
+      <section className="py-[32px] px-4 bg-[#030303] border-t border-zinc-900 relative flex flex-col items-center gap-[16px]">
+        <div className="max-w-4xl mx-auto flex flex-col items-center gap-[16px]">
+          <div className="text-center flex flex-col items-center gap-[8px]">
+            <h2 className="font-chivo text-[28px] md:text-[36px] font-black tracking-tight text-white">
+              Transparência e privacidade de dados
+            </h2>
+            <p className="text-zinc-400 text-[15px] max-w-xl">
+              Explicamos com total honestidade e clareza como, onde e por que lidamos com as suas informações na plataforma.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-[16px] w-full mt-[8px]">
+            <div className="bg-[#0a0a0a] border border-zinc-900 p-6 rounded-[20px] flex flex-col gap-[8px] hover:border-zinc-850 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center text-white">
+                <Database className="w-4 h-4 text-zinc-300" />
+              </div>
+              <h4 className="font-chivo text-[15px] font-bold text-white">Quais dados solicitamos?</h4>
+              <p className="text-zinc-400 text-[12px] leading-relaxed">
+                Coletamos seu nome de utilizador, contacto telefónico (para que compradores possam falar diretamente contigo) e e-mail para autenticação segura.
+              </p>
+            </div>
+
+            <div className="bg-[#0a0a0a] border border-zinc-900 p-6 rounded-[20px] flex flex-col gap-[8px] hover:border-zinc-850 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center text-white">
+                <ShieldCheck className="w-4 h-4 text-zinc-300" />
+              </div>
+              <h4 className="font-chivo text-[15px] font-bold text-white">Finalidade da recolha</h4>
+              <p className="text-zinc-400 text-[12px] leading-relaxed">
+                Esses dados servem estritamente para viabilizar as transações comerciais na plataforma, gerar confiança mútua e permitir notificações sobre novas propostas e conversas no chat.
+              </p>
+            </div>
+
+            <div className="bg-[#0a0a0a] border border-zinc-900 p-6 rounded-[20px] flex flex-col gap-[8px] hover:border-zinc-850 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center text-white">
+                <ArrowRight className="w-4 h-4 text-zinc-300" />
+              </div>
+              <h4 className="font-chivo text-[15px] font-bold text-white">Controle e eliminação</h4>
+              <p className="text-zinc-400 text-[12px] leading-relaxed">
+                Nenhum dado é vendido a terceiros. Você pode editar todas as suas informações de contacto a qualquer momento nas definições da sua conta ou solicitar a eliminação definitiva.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* How it Works Section with max 8px spacing */}
-      <section className="py-[16px] px-4 bg-[#050505] border-t border-zinc-900 relative gap-[8px] flex flex-col items-center">
+      <section className="py-[32px] px-4 bg-[#050505] border-t border-zinc-900 relative gap-[8px] flex flex-col items-center">
         <div className="max-w-4xl mx-auto flex flex-col items-center gap-[8px]">
           <div className="text-center mb-[8px] mt-[8px] flex flex-col items-center gap-[8px]">
             <h2 className="font-chivo text-[28px] md:text-[36px] font-black tracking-tight text-white mb-[8px]">
@@ -136,7 +246,7 @@ export default function LandingScreen({ onNavigate, onOpenPolicies }: LandingScr
               Termos
             </button>
             <button 
-              onClick={() => onOpenPolicies ? onOpenPolicies("privacy") : onNavigate("policies")} 
+              onClick={() => onOpenPolicies ? onOpenPolicies("privacy") : onNavigate("privacy")} 
               className="hover:text-white transition-colors cursor-pointer px-[4px]"
             >
               Privacidade
@@ -152,3 +262,4 @@ export default function LandingScreen({ onNavigate, onOpenPolicies }: LandingScr
     </div>
   );
 }
+
