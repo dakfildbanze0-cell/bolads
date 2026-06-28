@@ -117,21 +117,51 @@ export default function ChatScreen({
     const nameToUse = useProfile && activeProfileInfo ? activeProfileInfo.name : (conv.name || "Usuário");
     const imgToUse = useProfile && activeProfileInfo ? activeProfileInfo.avatar : conv.img;
 
-    const initial = nameToUse.charAt(0).toUpperCase();
+    const defaultPlaceholder = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80";
+    const defaultPlaceholder2 = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80";
+    const hasAvatar = imgToUse && imgToUse.trim() !== "" && imgToUse !== defaultPlaceholder && imgToUse !== defaultPlaceholder2;
+
+    const initial = nameToUse.trim().charAt(0).toUpperCase();
     const dimensions = size === "xs" ? "w-[24px] h-[24px]" : size === "sm" ? "w-[36px] h-[36px]" : "w-[48px] h-[48px]";
     
-    return (
-      <div className={`${dimensions} shrink-0 bg-zinc-800 flex items-center justify-center rounded-full overflow-hidden`}>
-        {imgToUse ? (
+    if (hasAvatar) {
+      return (
+        <div className={`${dimensions} shrink-0 bg-zinc-800 flex items-center justify-center rounded-full overflow-hidden`}>
           <img
             src={imgToUse}
             alt={nameToUse}
             className="w-full h-full object-cover rounded-full"
             referrerPolicy="no-referrer"
           />
-        ) : (
-          <span className="text-[12px] md:text-[15px] font-black text-white">{initial}</span>
-        )}
+        </div>
+      );
+    }
+
+    // Hash color for initials
+    const colors = [
+      "bg-red-500 text-white",
+      "bg-orange-500 text-white",
+      "bg-amber-500 text-white",
+      "bg-emerald-500 text-white",
+      "bg-teal-500 text-white",
+      "bg-blue-500 text-white",
+      "bg-indigo-500 text-white",
+      "bg-purple-500 text-white",
+      "bg-pink-500 text-white",
+      "bg-rose-500 text-white",
+    ];
+    let hash = 0;
+    for (let i = 0; i < nameToUse.length; i++) {
+      hash = nameToUse.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colorIndex = Math.abs(hash) % colors.length;
+    const colorClass = colors[colorIndex];
+
+    const textSizes = size === "xs" ? "text-[10px]" : size === "sm" ? "text-[12px]" : "text-[15px]";
+
+    return (
+      <div className={`${dimensions} shrink-0 ${colorClass} flex items-center justify-center rounded-full overflow-hidden font-bold select-none text-center ${textSizes}`}>
+        {initial}
       </div>
     );
   };
@@ -206,7 +236,7 @@ export default function ChatScreen({
   });
 
   return (
-    <div className="flex flex-col relative w-full h-full px-[8px] pb-[8px]">
+    <div className="flex flex-col relative w-full h-full px-[5px] pb-[5px]">
       {activeConv ? (
         /* INSTANT DETAILED CHAT CHANNEL VIEW */
         <div className="flex flex-col bg-transparent relative w-full h-full overflow-hidden">
@@ -239,8 +269,8 @@ export default function ChatScreen({
           )}
 
           {/* Header Bar - max 8px spacing */}
-          <div className="flex items-center justify-between py-2 sticky top-0 bg-transparent z-10 rounded-[8px] mb-[8px] gap-[8px]">
-            <div className="flex items-center gap-[8px]">
+          <div className="flex items-center justify-between py-2 sticky top-0 bg-transparent z-10 rounded-[8px] mb-[5px] gap-[5px]">
+            <div className="flex items-center gap-[5px]">
               <button
                 onClick={() => setActiveChatId(null)}
                 className="p-1 hover:bg-zinc-900 rounded-[8px] text-white cursor-pointer transition-colors border-none bg-transparent"
@@ -312,14 +342,14 @@ export default function ChatScreen({
           )}
 
           {/* Message Thread Scroll Area - max 8px spacing */}
-          <div className="flex-1 overflow-y-auto py-2 flex flex-col gap-[8px] no-scrollbar">
+          <div className="flex-1 overflow-y-auto py-2 flex flex-col gap-[5px] no-scrollbar">
             {activeMessages && activeMessages.length > 0 ? (
               activeMessages.map((m) => {
                 const isMe = m.senderId === currentUser?.id || m.sender === "me";
                 return (
                   <div
                     key={m.id}
-                    className={`flex items-start gap-[8px] w-[95%] md:w-[90%] ${isMe ? "ml-auto justify-end" : "mr-auto justify-start"}`}
+                    className={`flex items-start gap-[5px] w-[95%] md:w-[90%] ${isMe ? "ml-auto justify-end" : "mr-auto justify-start"}`}
                   >
                     {!isMe && (
                       <div className="shrink-0 mb-[1px]" title={activeConv.name}>
@@ -354,7 +384,7 @@ export default function ChatScreen({
           </div>
 
           {/* Quick response messages (gray background, short, with emojis) - max 8px spacing */}
-          <div className="flex gap-[8px] overflow-x-auto pb-[4px] px-[8px] pt-[2px] no-scrollbar shrink-0 select-none">
+          <div className="flex gap-[5px] overflow-x-auto pb-[4px] px-[5px] pt-[2px] no-scrollbar shrink-0 select-none">
             {getQuickMessages(activeConv).map((m, idx) => (
               <button
                 key={idx}
@@ -368,7 +398,7 @@ export default function ChatScreen({
           </div>
 
           {/* Bottom Chat Message Input Row filled with adjacent icons - max 8px spacing */}
-          <div className="flex items-center gap-[8px] px-[2px] pb-[4px] mt-[8px] shrink-0 bg-transparent select-none">
+          <div className="flex items-center gap-[5px] px-[2px] pb-[4px] mt-[5px] shrink-0 bg-transparent select-none">
             {/* Left side actions */}
             <div className="flex items-center gap-[4px] shrink-0">
               <button
@@ -432,7 +462,7 @@ export default function ChatScreen({
         <>
           {/* Top header with Back Icon, Screen Name and Search - Max 8px separation */}
           <div className="flex items-center justify-between py-2 bg-transparent select-none mb-[2px]">
-            <div className="flex items-center gap-[8px]">
+            <div className="flex items-center gap-[5px]">
               <button
                 onClick={onBack}
                 className="p-1 hover:bg-zinc-900 rounded-[8px] text-white cursor-pointer transition-all border-none bg-transparent"
@@ -445,7 +475,7 @@ export default function ChatScreen({
               </span>
             </div>
             {/* Header Right Actions */}
-            <div className="flex items-center gap-[8px] shrink-0">
+            <div className="flex items-center gap-[5px] shrink-0">
               <button
                 onClick={() => {
                   setIsSearching(!isSearching);
@@ -470,7 +500,7 @@ export default function ChatScreen({
 
           {/* Gray Background Search Bar */}
           {isSearching && (
-            <div className="flex items-center bg-zinc-900 rounded-[8px] px-3 py-1.5 mb-[8px] gap-[8px] animate-fade-in">
+            <div className="flex items-center bg-zinc-900 rounded-[8px] px-3 py-1.5 mb-[5px] gap-[5px] animate-fade-in">
               <Search className="w-4 h-4 text-zinc-400 shrink-0" />
               <input
                 type="text"
@@ -564,7 +594,7 @@ export default function ChatScreen({
           )}
 
           {/* Conversation List - No borders or lines, max 8px spacing */}
-          <div className="flex flex-col gap-[8px]">
+          <div className="flex flex-col gap-[5px]">
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-[24px] text-center gap-[8px] rounded-[8px]">
                 <MessageCircle className="w-8 h-8 text-neutral-600" />
@@ -583,7 +613,7 @@ export default function ChatScreen({
                 onClick={() => {
                   setActiveChatId(c.id);
                 }}
-                className="group bg-zinc-950/25 hover:bg-zinc-900/50 transition-all duration-200 cursor-pointer p-3 flex gap-[8px] items-center relative overflow-hidden rounded-[8px]"
+                className="group bg-zinc-950/25 hover:bg-zinc-900/50 transition-all duration-200 cursor-pointer p-[5px] flex gap-[5px] items-center relative overflow-hidden rounded-[8px]"
               >
                 {/* Avatar */}
                 <div className="relative flex-shrink-0">

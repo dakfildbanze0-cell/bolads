@@ -3,6 +3,7 @@ import { Edit3, RefreshCw, Trash2, Users, ShoppingBag, ChevronRight, ArrowLeft, 
 import { supabase } from "../lib/supabase";
 import { uploadImage } from "../lib/supabase";
 import { formatPrice } from "../lib/formatPrice";
+import UserAvatar from "./UserAvatar";
 
 interface ProfileScreenProps {
   onSelectProduct?: (product: any) => void;
@@ -370,10 +371,10 @@ export default function ProfileScreen({
   // VIEW 1: Main Profile
   if (activeSubView === "profile") {
     return (
-      <div className="flex flex-col gap-[8px] p-[10px] pb-24 w-full animate-fade-in bg-zinc-900 min-h-screen">
+      <div className="flex flex-col gap-[5px] p-[5px] pb-24 w-full animate-fade-in bg-zinc-900 min-h-screen">
         {/* Profile Header with Back Button */}
-        <div className="flex items-center gap-[8px] py-1 px-1 border-0 bg-transparent text-white justify-between">
-          <div className="flex items-center gap-[8px]">
+        <div className="flex items-center gap-[5px] py-1 px-1 border-0 bg-transparent text-white justify-between">
+          <div className="flex items-center gap-[5px]">
             <button
               onClick={onBack}
               className="flex items-center justify-center text-white hover:opacity-80 active:scale-95 transition-all cursor-pointer bg-transparent border-none p-1"
@@ -531,13 +532,7 @@ export default function ProfileScreen({
           <section className="p-2 flex flex-col gap-[8px] bg-transparent text-white w-full">
             <div className="flex items-start justify-between gap-[8px]">
               <div className="relative">
-                <div className="w-20 h-20 md:w-28 md:h-28 overflow-hidden rounded-full">
-                  <img
-                    alt="Profile Avatar"
-                    className="w-full h-full object-cover"
-                    src={displayAvatar}
-                  />
-                </div>
+                <UserAvatar src={displayAvatar} name={displayName} size="w-20 h-20 md:w-28 md:h-28" />
                 <div className="absolute -bottom-1 -right-1 bg-white p-[3px] rounded-full">
                   <span className="text-[10px] text-black font-bold">✓</span>
                 </div>
@@ -738,10 +733,10 @@ export default function ProfileScreen({
   // VIEW 2: Meus Anúncios Sub-View
   if (activeSubView === "anuncios") {
     return (
-      <div className="flex flex-col gap-[8px] p-[10px] pb-24 w-full animate-fade-in bg-zinc-900 min-h-screen text-white">
+      <div className="flex flex-col gap-[5px] p-[5px] pb-24 w-full animate-fade-in bg-zinc-900 min-h-screen text-white">
         {/* Header bar */}
-        <div className="flex items-center gap-[8px] py-1 px-1 border-0 bg-transparent text-white justify-between">
-          <div className="flex items-center gap-[8px]">
+        <div className="flex items-center gap-[5px] py-1 px-1 border-0 bg-transparent text-white justify-between">
+          <div className="flex items-center gap-[5px]">
             <button
               onClick={() => setActiveSubView("profile")}
               className="flex items-center justify-center text-white hover:opacity-80 active:scale-95 transition-all cursor-pointer bg-transparent border-none p-1"
@@ -766,7 +761,7 @@ export default function ProfileScreen({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-[8px] w-full px-1 mt-1 bg-transparent">
+          <div className="grid grid-cols-2 gap-[5px] w-full px-1 mt-1 bg-transparent">
             {myProducts.map((p) => (
               <div
                 key={p.id}
@@ -828,10 +823,10 @@ export default function ProfileScreen({
   // VIEW 3: Meus Seguidores Sub-View
   if (activeSubView === "seguidores") {
     return (
-      <div className="flex flex-col gap-[8px] p-[10px] pb-24 w-full animate-fade-in bg-zinc-900 min-h-screen text-white">
+      <div className="flex flex-col gap-[5px] p-[5px] pb-24 w-full animate-fade-in bg-zinc-900 min-h-screen text-white">
         {/* Header bar */}
-        <div className="flex items-center gap-[8px] py-1 px-1 border-0 bg-transparent text-white justify-between">
-          <div className="flex items-center gap-[8px]">
+        <div className="flex items-center gap-[5px] py-1 px-1 border-0 bg-transparent text-white justify-between">
+          <div className="flex items-center gap-[5px]">
             <button
               onClick={() => setActiveSubView("profile")}
               className="flex items-center justify-center text-white hover:opacity-80 active:scale-95 transition-all cursor-pointer bg-transparent border-none p-1"
@@ -856,19 +851,14 @@ export default function ProfileScreen({
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-[8px] px-1 mt-1 bg-transparent">
+          <div className="flex flex-col gap-[5px] px-1 mt-1 bg-transparent">
             {activeFollowers.map((follower, idx) => (
               <div
                 key={idx}
                 className="flex items-center justify-between p-2.5 bg-transparent rounded-[8px] border-none"
               >
                 <div className="flex items-center gap-3 bg-transparent">
-                  <img
-                    src={follower.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
-                    alt={follower.name}
-                    className="w-10 h-10 rounded-full object-cover border border-zinc-800"
-                    referrerPolicy="no-referrer"
-                  />
+                  <UserAvatar src={follower.avatar_url} name={follower.name} size="w-10 h-10" />
                   <div className="flex flex-col">
                     <span className="font-hanken font-bold text-[13px] text-white">
                       {formatText(follower.name || "Utilizador")}

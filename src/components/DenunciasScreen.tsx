@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, Send, AlertTriangle, MessageSquare, ShieldAlert, Check } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import UserAvatar from "./UserAvatar";
 
 interface Reply {
   id: string;
@@ -312,11 +313,7 @@ export default function DenunciasScreen({ user, userProfile, onBack }: Denuncias
                   >
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-[6px]">
-                        <img
-                          src={reply.sender_avatar}
-                          className="w-5 h-5 rounded-full object-cover"
-                          alt=""
-                        />
+                        <UserAvatar src={reply.sender_avatar} name={reply.sender_name} size="w-5 h-5" />
                         <span className="text-[12px] font-bold text-zinc-200">
                           {reply.sender_name}
                         </span>

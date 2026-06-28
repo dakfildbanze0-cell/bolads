@@ -168,10 +168,10 @@ export default function AlertsScreen({ onSelectProduct, products = [], onBack, c
   const filteredAlerts = activeTab === "todas" ? alerts : alerts.filter((a) => !a.read);
 
   return (
-    <div className="flex flex-col gap-[8px] w-full animate-fade-in text-white">
+    <div className="flex flex-col gap-[5px] w-full animate-fade-in text-white">
       {/* Header section - max 8px gap */}
-      <section className="py-[12px] px-[8px] flex flex-col gap-[8px] sticky top-0 bg-zinc-900 z-10">
-        <div className="flex items-center justify-between gap-[8px]">
+      <section className="py-[12px] px-[5px] flex flex-col gap-[5px] sticky top-0 bg-zinc-900 z-10">
+        <div className="flex items-center justify-between gap-[5px]">
           <div className="flex items-center gap-[6px]">
             {onBack && (
               <button onClick={onBack} className="mr-[4px] p-[2px] rounded-full hover:bg-zinc-800 transition-colors">
@@ -221,7 +221,7 @@ export default function AlertsScreen({ onSelectProduct, products = [], onBack, c
       </section>
 
       {/* Main notifications container with maximum 8px separation */}
-      <div className="flex flex-col gap-[8px] w-full px-[8px]">
+      <div className="flex flex-col gap-[5px] w-full px-[5px]">
         {filteredAlerts.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-[24px] text-center gap-[8px] rounded-[8px]">
             <Bell className="w-8 h-8 text-neutral-650" />
@@ -234,7 +234,7 @@ export default function AlertsScreen({ onSelectProduct, products = [], onBack, c
             <div
               key={alert.id}
               onClick={() => handleAlertClick(alert)}
-              className={`flex items-start gap-[8px] p-[8px] rounded-[8px] transition-all relative ${
+              className={`flex items-start gap-[5px] p-[5px] rounded-[8px] transition-all relative ${
                 alert.productName ? "cursor-pointer hover:bg-zinc-900/40" : ""
               } ${!alert.read ? "bg-zinc-900/10" : ""}`}
             >
@@ -252,7 +252,7 @@ export default function AlertsScreen({ onSelectProduct, products = [], onBack, c
 
               {/* Alert Message */}
               <div className="flex-1 min-w-0 flex flex-col gap-[2px]">
-                <div className="flex items-baseline justify-between gap-[8px]">
+                <div className="flex items-baseline justify-between gap-[5px]">
                   <h4 className="font-chivo text-[13px] font-extrabold text-white leading-tight">
                     {alert.title}
                   </h4>

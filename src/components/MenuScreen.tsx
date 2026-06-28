@@ -8,9 +8,9 @@ interface MenuScreenProps {
 
 export default function MenuScreen({ onBack, onNavigate }: MenuScreenProps) {
   return (
-    <div className="w-full max-w-md mx-auto p-[8px] bg-transparent flex flex-col gap-[8px] animate-fade-in font-sans min-h-[calc(100vh-60px)]">
+    <div className="w-full max-w-md mx-auto p-[5px] bg-transparent flex flex-col gap-[5px] animate-fade-in font-sans min-h-[calc(100vh-60px)]">
       {/* Header with Back Button */}
-      <div className="flex items-center gap-[8px] pb-[8px] bg-transparent">
+      <div className="flex items-center gap-[5px] pb-[5px] bg-transparent">
         <button
           type="button"
           onClick={onBack}
@@ -26,7 +26,7 @@ export default function MenuScreen({ onBack, onNavigate }: MenuScreenProps) {
         Menu de opções
       </h3>
 
-      <div className="flex flex-col gap-[8px] w-full">
+      <div className="flex flex-col gap-[5px] w-full">
         {/* Rectangle 1: Definições */}
         <a
           href="#settings"

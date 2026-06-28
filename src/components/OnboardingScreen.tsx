@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Camera, ArrowRight, User, FileText, Check, Phone, MapPin, Shield, Lock } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { uploadImage } from "../lib/supabase";
+import UserAvatar from "./UserAvatar";
 
 interface OnboardingScreenProps {
   user: any;
@@ -208,12 +209,7 @@ export default function OnboardingScreen({ user, userProfile, onComplete }: Onbo
               {/* Avatar upload/preview widget */}
               <div className="relative shrink-0 flex flex-col items-center">
                 <div className="relative w-20 h-20 group">
-                  <img
-                    src={avatar}
-                    alt="Avatar Preview"
-                    className="w-full h-full rounded-full object-cover border-2 border-zinc-700 shadow-xl transition-all duration-300 group-hover:border-zinc-500"
-                    referrerPolicy="no-referrer"
-                  />
+                  <UserAvatar src={avatar} name={name} size="w-20 h-20" className="border-2 border-zinc-700 shadow-xl transition-all duration-300 group-hover:border-zinc-500" />
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}

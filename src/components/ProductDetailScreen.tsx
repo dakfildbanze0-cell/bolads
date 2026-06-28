@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import UserAvatar from "./UserAvatar";
 
 import { 
   ArrowLeft, 
@@ -558,7 +559,11 @@ export default function ProductDetailScreen({
           >
             <div className="relative">
               <MessageSquare className="w-5 h-5 text-zinc-400" strokeWidth={2.5} />
-              <span className="absolute -top-[6px] -right-[8px] bg-rose-500 text-white text-[9px] font-black px-[4px] py-[1px] rounded-full border border-black">19</span>
+              {commentsList.length > 0 && (
+                <span className="absolute -top-[6px] -right-[8px] bg-rose-500 text-white text-[9px] font-black px-[4px] py-[1px] rounded-full border border-black">
+                  {commentsList.length}
+                </span>
+              )}
             </div>
             <span className="font-hanken text-[11px] font-black mt-1 text-zinc-300">Comentários</span>
             <div className="w-full h-[2px] bg-zinc-700/80 mt-[2px]" />
@@ -661,9 +666,11 @@ export default function ProductDetailScreen({
                       />
                     </button>
                   ))}
-                  <span className="text-xs font-black text-zinc-300 ml-1">
-                    {ratingStars > 0 ? `${ratingStars} ${ratingStars === 1 ? formatText("Estrela") : formatText("Estrelas")}` : formatText("Sem Seleção")}
-                  </span>
+                  {ratingStars > 0 && (
+                    <span className="text-xs font-black text-zinc-300 ml-1">
+                      {ratingStars} {ratingStars === 1 ? formatText("Estrela") : formatText("Estrelas")}
+                    </span>
+                  )}
                 </div>
 
                 {/* Optional Comment Input */}
@@ -734,12 +741,7 @@ export default function ProductDetailScreen({
             }}
             className="flex items-center gap-[8px] min-w-0 flex-1 cursor-pointer hover:opacity-80 transition-all active:scale-[0.99]"
           >
-            <img
-              src={product.sellerAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
-              alt={product.sellerName || "Vendedor"}
-              className="w-10 h-10 object-cover rounded-full shrink-0 border border-zinc-800"
-              referrerPolicy="no-referrer"
-            />
+            <UserAvatar src={product.sellerAvatar} name={product.sellerName} size="w-10 h-10" />
             <div className="flex flex-col min-w-0 leading-tight">
               <span className="font-hanken text-[16px] md:text-[18px] font-black text-white hover:underline">
                 {formatText(product.sellerName || "Vendedor")}
@@ -844,7 +846,7 @@ export default function ProductDetailScreen({
               </div>
 
               {/* Scrollable comments list, completely transparent background, with visual connector lines */}
-              <div className="flex flex-col gap-[14px] overflow-y-auto max-h-[75vh] no-scrollbar py-[4px]">
+              <div className="flex flex-col gap-[8px] overflow-y-auto max-h-[75vh] no-scrollbar py-[4px]">
                 {commentsList.map((comm) => (
                   <div key={comm.id} className="flex flex-col gap-[8px]">
                     {/* Parent Comment */}
@@ -852,11 +854,7 @@ export default function ProductDetailScreen({
                       {comm.replies && comm.replies.length > 0 && (
                         <div className="absolute left-[15px] top-[32px] bottom-[-8px] w-[2px] bg-zinc-800" />
                       )}
-                      <img
-                        alt={comm.authorName}
-                        className="w-8 h-8 rounded-full object-cover shrink-0 z-10"
-                        src={comm.authorAvatar}
-                      />
+                      <UserAvatar src={comm.authorAvatar} name={comm.authorName} size="w-8 h-8" className="z-10" />
                       <div className="flex flex-col flex-1 leading-tight min-w-0">
                         <div className="flex items-baseline justify-between gap-[6px]">
                           <span className="font-hanken text-[15px] font-bold text-white truncate">
@@ -881,11 +879,7 @@ export default function ProductDetailScreen({
                           <div className={`absolute left-[15px] top-[-8px] ${isLast ? 'h-[24px]' : 'bottom-0'} w-[2px] bg-zinc-800`} />
                           <div className="absolute left-[15px] top-[16px] w-[14px] h-[2px] bg-zinc-800" />
 
-                          <img
-                            alt={reply.authorName}
-                            className="w-6 h-6 rounded-full object-cover shrink-0 z-10"
-                            src={reply.authorAvatar}
-                          />
+                          <UserAvatar src={reply.authorAvatar} name={reply.authorName} size="w-6 h-6" className="z-10" />
                           <div className="flex flex-col flex-1 leading-tight min-w-0">
                             <div className="flex items-baseline justify-between gap-[6px]">
                               <span className="font-hanken text-[13px] font-bold text-neutral-350 truncate">

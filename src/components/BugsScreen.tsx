@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, Send, CheckCircle2, MessageSquare, AlertCircle } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import UserAvatar from "./UserAvatar";
 
 interface Bug {
   id: string;
@@ -309,11 +310,7 @@ export default function BugsScreen({ user, userProfile, onBack }: BugsScreenProp
             </p>
 
             <div className="flex items-center gap-[6px] text-[11px] text-zinc-500">
-              <img
-                src={selectedBug.profiles?.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
-                className="w-4 h-4 rounded-full object-cover"
-                alt=""
-              />
+              <UserAvatar src={selectedBug.profiles?.avatar_url} name={selectedBug.profiles?.name} size="w-4 h-4" />
               <span>Relatado Por {selectedBug.profiles?.name || "Usuário"}</span>
             </div>
           </div>
@@ -338,11 +335,7 @@ export default function BugsScreen({ user, userProfile, onBack }: BugsScreenProp
                   >
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-[6px]">
-                        <img
-                          src={reply.sender_avatar}
-                          className="w-5 h-5 rounded-full object-cover"
-                          alt=""
-                        />
+                        <UserAvatar src={reply.sender_avatar} name={reply.sender_name} size="w-5 h-5" />
                         <span className="text-[12px] font-bold text-zinc-200">
                           {reply.sender_name}
                         </span>

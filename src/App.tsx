@@ -43,6 +43,7 @@ import AlertsScreen from "./components/AlertsScreen";
 import ShowcaseScreen from "./components/ShowcaseScreen";
 import SettingsScreen from "./components/SettingsScreen";
 import PoliciesScreen from "./components/PoliciesScreen";
+import UserAvatar from "./components/UserAvatar";
 import SignUpScreen from "./components/SignUpScreen";
 import SignInScreen from "./components/SignInScreen";
 import RecoveryScreen from "./RecoveryScreen";
@@ -821,10 +822,10 @@ export default function App() {
       {/* 1. Header (Fixed top, h-12 [48px] height) - No borders, no local background - Hidden on chat, anunciar, signin, signup, recovery screens */}
       {!isHeaderHidden && (
         <header className="fixed top-0 left-0 right-0 h-12 bg-zinc-900 flex items-center z-50 border-b border-zinc-800/20">
-          <div className="w-full max-w-7xl mx-auto flex items-center justify-between px-[16px] h-full">
+          <div className="w-full max-w-7xl mx-auto flex items-center justify-between px-[5px] h-full">
             {isSearchFocused ? (
               /* Global Search Bar Active Layout */
-              <div className="flex items-center w-full gap-[8px] h-full animate-fade-in">
+              <div className="flex items-center w-full gap-[5px] h-full animate-fade-in">
                 <button
                   onClick={() => {
                     setIsSearchFocused(false);
@@ -899,7 +900,7 @@ export default function App() {
                 </div>
 
                 {/* Central Top Search Bar (Desktop only, grey, borderless, thicker) */}
-                <div className="hidden md:flex relative flex-1 max-w-sm border-none rounded-[10px] bg-zinc-800 flex items-center px-4 py-[8px] transition-all focus-within:bg-zinc-750 mx-[8px]">
+                <div className="hidden md:flex relative flex-1 max-w-sm border-none rounded-[8px] bg-zinc-800 flex items-center px-4 py-[8px] transition-all focus-within:bg-zinc-750 mx-[5px]">
                   <Search className="w-4 h-4 text-zinc-300 shrink-0 mr-[8px]" strokeWidth={2.5} />
                   <input
                     type="text"
@@ -925,7 +926,7 @@ export default function App() {
                 </div>
 
                 {/* Right side placeholder */}
-                <div className="flex items-center gap-[8px]">
+                <div className="flex items-center gap-[5px]">
                   {/* Following Icon (Mobile Only) */}
                   <button 
                     onClick={() => setActiveScreen("following")}
@@ -977,7 +978,7 @@ export default function App() {
       )}
 
       {/* 2. Responsive Side-by-Side Main Layout Grid (Capped to max-7xl) - strict 5px column gap */}
-      <div className={`w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-[5px] transition-all duration-300 ${isHeaderHidden ? "pt-[16px]" : "pt-[64px]"} min-h-screen ${isSidebarHidden ? "justify-center" : ""} px-[16px]`}>
+      <div className={`w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-[5px] transition-all duration-300 ${isHeaderHidden ? "pt-[5px]" : "pt-[64px]"} min-h-screen ${isSidebarHidden ? "justify-center" : ""} px-[5px]`}>
         {/* Left Sticky Sidebar for Desktop Viewports */}
         {!isSidebarHidden && !isLeftSidebarCollapsed && (
           <aside className={`hidden md:flex w-64 shrink-0 flex-col gap-[5px] self-start sticky ${isHeaderHidden ? "top-[16px] h-[calc(100vh-32px)]" : "top-[64px] h-[calc(100vh-80px)]"} overflow-y-auto no-scrollbar p-[5px]`}>
@@ -1004,13 +1005,13 @@ export default function App() {
                     setSettingsSubView(null);
                     setActiveScreen(screen.id);
                   }}
-                  className={`flex items-center justify-between w-full px-4 py-3 rounded-[10px] text-left transition-all duration-150 font-hanken text-[13px] font-bold cursor-pointer active:scale-[0.98] no-underline ${
+                  className={`flex items-center justify-between w-full px-4 py-3 rounded-[8px] text-left transition-all duration-150 font-hanken text-[13px] font-bold cursor-pointer active:scale-[0.98] no-underline ${
                     isActive
                       ? "bg-zinc-850 text-white border-l-[4px] border-white pl-[12px]"
                       : "text-white bg-zinc-950/25 hover:bg-zinc-800"
                   }`}
                 >
-                  <div className="flex items-center gap-[8px] min-w-0">
+                  <div className="flex items-center gap-[5px] min-w-0">
                     <ScreenIcon className={`w-5 h-5 shrink-0 ${hasAlerts ? "text-rose-500 fill-rose-500/20" : "text-white"}`} strokeWidth={isActive ? 2.5 : 2.0} />
                     <span className="truncate">{screen.name}</span>
                   </div>
@@ -1058,13 +1059,13 @@ export default function App() {
                       setActiveScreen(screen.id);
                     }
                   }}
-                  className={`flex items-center justify-between w-full px-4 py-3 rounded-[10px] text-left transition-all duration-150 font-hanken text-[13px] font-bold cursor-pointer active:scale-[0.98] no-underline ${
+                  className={`flex items-center justify-between w-full px-4 py-3 rounded-[8px] text-left transition-all duration-150 font-hanken text-[13px] font-bold cursor-pointer active:scale-[0.98] no-underline ${
                     isActive
                       ? "bg-transparent text-white border-l-[4px] border-white pl-[12px]"
                       : "text-zinc-400 bg-transparent hover:text-white hover:bg-zinc-900/30"
                   }`}
                 >
-                  <div className="flex items-center gap-[8px] min-w-0">
+                  <div className="flex items-center gap-[5px] min-w-0">
                     <ScreenIcon className="w-5 h-5 shrink-0 text-current" strokeWidth={isActive ? 2.5 : 2.0} />
                     <span className="truncate">{screen.name}</span>
                   </div>
@@ -1333,8 +1334,8 @@ export default function App() {
 
         {/* Right Sticky Sidebar for Desktop Viewports */}
         {!isSidebarHidden && (
-          <aside className={`hidden lg:flex w-64 md:w-72 shrink-0 flex-col gap-[8px] self-start sticky ${isHeaderHidden ? "top-[16px] h-[calc(100vh-32px)]" : "top-[64px] h-[calc(100vh-80px)]"} overflow-y-auto no-scrollbar p-[5px]`}>
-            <div className="bg-zinc-950 p-[12px] rounded-[10px] flex flex-col gap-[5px] border border-zinc-800/10 shadow-lg">
+          <aside className={`hidden lg:flex w-64 md:w-72 shrink-0 flex-col gap-[5px] self-start sticky ${isHeaderHidden ? "top-[16px] h-[calc(100vh-32px)]" : "top-[64px] h-[calc(100vh-80px)]"} overflow-y-auto no-scrollbar p-[5px]`}>
+            <div className="bg-zinc-950 p-[5px] rounded-[8px] flex flex-col gap-[5px] border border-zinc-800/10 shadow-lg">
               <h3 className="font-hanken text-[12px] font-bold tracking-wider text-zinc-400 capitalize">
                 {(() => {
                   const hasFollowed = allProfiles.some(p => (!user || p.id !== user.id) && (followedSellers[p.id] === true || followedSellers[p.name] === true));
@@ -1369,11 +1370,7 @@ export default function App() {
                           }}
                           className="flex items-center gap-[5px] min-w-0 cursor-pointer flex-1"
                         >
-                          <img
-                            src={profile.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
-                            alt={profile.name}
-                            className="w-8 h-8 rounded-full object-cover shrink-0 border border-zinc-850"
-                          />
+                          <UserAvatar src={profile.avatar_url} name={profile.name} size="w-8 h-8" />
                           <div className="flex flex-col min-w-0 leading-tight">
                             <span className="font-hanken text-[12px] font-semibold text-white truncate hover:underline capitalize">
                               {profile.name}
@@ -1402,7 +1399,7 @@ export default function App() {
             </div>
 
             {selectedProduct && (
-              <div className="bg-zinc-950 p-[12px] rounded-[10px] flex flex-col gap-[8px] border border-zinc-800/10 shadow-lg">
+              <div className="bg-zinc-950 p-[5px] rounded-[8px] flex flex-col gap-[5px] border border-zinc-800/10 shadow-lg">
                 <div className="flex flex-col gap-[4px]">
                   <h1 className="font-chivo text-[15px] font-black text-white capitalize leading-tight">
                     {selectedProduct.name}

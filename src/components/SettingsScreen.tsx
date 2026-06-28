@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import UserAvatar from "./UserAvatar";
 import {
   User,
   Shield,
@@ -348,7 +349,7 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
   };
 
   return (
-    <div className="flex flex-col gap-[8px] p-[8px] w-full text-white bg-black min-h-screen">
+    <div className="flex flex-col gap-[5px] p-[5px] w-full text-white bg-black min-h-screen">
       
       {toast && (
         <div className="fixed bottom-[8px] left-[8px] right-[8px] bg-white text-black p-[8px] rounded-[8px] flex items-center gap-[8px] z-50 text-[16px] font-normal">
@@ -395,7 +396,7 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
                 className="flex items-center justify-between p-[8px] bg-zinc-900 hover:bg-zinc-800 rounded-[8px] text-left transition-all bg-transparent border-none cursor-pointer"
               >
                 <div className="flex items-center gap-[8px]">
-                  <img src={settings.avatar} className="w-12 h-12 rounded-full object-cover" />
+                  <UserAvatar src={settings.avatar} name={settings.fullName} size="w-12 h-12" />
                   <div className="flex flex-col gap-[2px]">
                     <span className="text-[18px] font-normal text-white">
                       Informações pessoais
@@ -430,11 +431,11 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
             </div>
           </div>
 
-          <div className="flex flex-col gap-[8px] bg-zinc-900 p-[8px] rounded-[8px]">
+          <div className="flex flex-col gap-[5px] bg-zinc-900 p-[5px] rounded-[8px]">
             <span className="text-[14px] font-normal text-zinc-400 tracking-wider px-[8px]">
               Ações críticas da conta
             </span>
-            <div className="flex flex-col gap-[4px]">
+            <div className="flex flex-col gap-[5px]">
               {!confirmSignOut ? (
                 <button 
                   onClick={() => setConfirmSignOut(true)}
@@ -605,7 +606,7 @@ export default function SettingsScreen({ onBack, initialSubView = null, userProf
 
               <div className="flex gap-[8px] items-center p-[8px] bg-zinc-900 rounded-[8px]">
                 <div className="relative">
-                  <img src={settings.avatar} className="w-16 h-16 rounded-full object-cover" />
+                  <UserAvatar src={settings.avatar} name={settings.fullName} size="w-16 h-16" />
                   <button 
                     onClick={() => {
                       const newAvatar = prompt("Insira a nova foto de perfil");

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Search, Sliders, CheckSquare, User, Eye, Heart } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import UserAvatar from "./UserAvatar";
 
 interface FollowingScreenProps {
   products?: any[];
@@ -95,7 +96,7 @@ export default function FollowingScreen({
   });
 
   return (
-    <div className="flex flex-col gap-[8px] p-[8px] w-full animate-fade-in text-white bg-zinc-900 min-h-screen">
+    <div className="flex flex-col gap-[5px] p-[5px] w-full animate-fade-in text-white bg-zinc-900 min-h-screen">
       {/* Header Section - Max 8px spacing */}
       <section className="py-[4px] flex flex-col gap-[4px]">
         <h2 className="font-chivo text-[18px] md:text-[24px] font-black leading-none text-white">
@@ -107,7 +108,7 @@ export default function FollowingScreen({
       </section>
 
       {/* Search Bar - Max 8px separation */}
-      <div className="flex gap-[8px] items-center bg-zinc-950/40 p-[4px] rounded-[8px] border border-zinc-800/10">
+      <div className="flex gap-[5px] items-center bg-zinc-950/40 p-[4px] rounded-[8px] border border-zinc-800/10">
         <div className="relative flex-1 bg-transparent">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
             <Search className="w-4 h-4 text-neutral-400" />
@@ -143,7 +144,7 @@ export default function FollowingScreen({
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-[8px] w-full">
+          <div className="flex flex-col gap-[5px] w-full">
             {followedSellersList.map((seller) => {
               const followersCount = getFollowersCount(seller.name, seller.id);
               const lastProduct = getLastProduct(seller.name, seller.id);
@@ -151,17 +152,12 @@ export default function FollowingScreen({
               return (
                 <div
                   key={seller.id}
-                  className="flex flex-col gap-[6px] p-[8px] bg-zinc-950/30 rounded-[8px] border border-zinc-800/10 hover:border-zinc-800/30 transition-all"
+                  className="flex flex-col gap-[5px] p-[5px] bg-zinc-950/30 rounded-[8px] border border-zinc-800/10 hover:border-zinc-800/30 transition-all"
                 >
                   {/* Seller Header Row */}
-                  <div className="flex items-center justify-between gap-[8px]">
-                    <div className="flex items-center gap-[8px] min-w-0">
-                      <img
-                        alt={seller.name}
-                        className="w-9 h-9 rounded-full object-cover shrink-0"
-                        src={seller.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
-                        referrerPolicy="no-referrer"
-                      />
+                  <div className="flex items-center justify-between gap-[5px]">
+                    <div className="flex items-center gap-[5px] min-w-0">
+                      <UserAvatar src={seller.avatar_url} name={seller.name} size="w-9 h-9" />
                       <div className="flex flex-col min-w-0">
                         <span className="font-hanken text-[13px] font-bold text-white truncate leading-tight">
                           {formatText(seller.name)}
@@ -193,7 +189,7 @@ export default function FollowingScreen({
                   {lastProduct ? (
                     <div 
                       onClick={() => onSelectProduct?.(lastProduct)}
-                      className="flex gap-[8px] p-[6px] bg-zinc-900/40 rounded-[6px] border border-zinc-850 cursor-pointer hover:bg-zinc-900/65 transition-colors items-center"
+                      className="flex gap-[5px] p-[5px] bg-zinc-900/40 rounded-[8px] border border-zinc-850 cursor-pointer hover:bg-zinc-900/65 transition-colors items-center"
                     >
                       <img
                         src={lastProduct.img}
@@ -242,22 +238,17 @@ export default function FollowingScreen({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-[8px] w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-[5px] w-full">
             {recommendedSellersList.slice(0, 4).map((seller) => {
               const followersCount = getFollowersCount(seller.name, seller.id);
 
               return (
                 <div
                   key={seller.id}
-                  className="flex items-center justify-between gap-[8px] p-[8px] bg-zinc-950/20 rounded-[8px] border border-zinc-800/10"
+                  className="flex items-center justify-between gap-[5px] p-[5px] bg-zinc-950/20 rounded-[8px] border border-zinc-800/10"
                 >
-                  <div className="flex items-center gap-[8px] min-w-0">
-                    <img
-                      alt={seller.name}
-                      className="w-8 h-8 rounded-full object-cover shrink-0"
-                      src={seller.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
-                      referrerPolicy="no-referrer"
-                    />
+                  <div className="flex items-center gap-[5px] min-w-0">
+                    <UserAvatar src={seller.avatar_url} name={seller.name} size="w-8 h-8" />
                     <div className="flex flex-col min-w-0">
                       <span className="font-hanken text-[12px] font-bold text-white truncate leading-tight">
                         {formatText(seller.name)}
@@ -304,12 +295,12 @@ export default function FollowingScreen({
           }
 
           return (
-            <div className="flex flex-col gap-[8px] w-full">
+            <div className="flex flex-col gap-[5px] w-full">
               {followedPosts.map((p) => (
                 <div
                   key={p.id}
                   onClick={() => onSelectProduct?.(p)}
-                  className="flex gap-[8px] p-[8px] rounded-[8px] bg-zinc-950/20 hover:bg-zinc-950/40 border border-zinc-800/5 cursor-pointer transition-all"
+                  className="flex gap-[5px] p-[5px] rounded-[8px] bg-zinc-950/20 hover:bg-zinc-950/40 border border-zinc-800/5 cursor-pointer transition-all"
                 >
                   <img
                     alt={p.name}
