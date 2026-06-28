@@ -178,10 +178,6 @@ export default function ProfileScreen({
     };
   }, [profile?.name]);
 
-  // Editing price
-  const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
-  const [tempPrice, setTempPrice] = useState("");
-
   useEffect(() => {
     if (!targetId) return;
     
@@ -330,22 +326,6 @@ export default function ProfileScreen({
       setEditing(false);
     } catch (e) {
       console.error("Erro Ao Salvar Perfil:", e);
-    }
-  };
-
-  const handleUpdatePrice = async (product_id: string) => {
-    if (!tempPrice.trim()) return;
-    try {
-      const numericPrice = parseFloat(tempPrice.replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
-      const { error } = await supabase
-        .from('products')
-        .update({ price: numericPrice })
-        .eq('id', product_id);
-      
-      if (error) throw error;
-      setEditingPriceId(null);
-    } catch (err) {
-      console.error("Erro Ao Atualizar Preço:", err);
     }
   };
 
@@ -799,53 +779,16 @@ export default function ProfileScreen({
                     {formatText(p.name)}
                   </h3>
                   <div className="flex justify-between items-center mt-1">
-                    {editingPriceId === p.id ? (
-                      <div className="flex items-center gap-1 w-full" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="text"
-                          value={tempPrice}
-                          onChange={(e) => setTempPrice(e.target.value)}
-                          className="w-full bg-zinc-800 text-white text-[12px] font-chivo px-1 py-1 rounded-[4px] border border-zinc-700 focus:outline-none"
-                          autoFocus
-                          placeholder="Preço"
-                        />
-                        <button
-                          onClick={() => handleUpdatePrice(p.id)}
-                          className="px-2 py-1 bg-white text-black text-[10px] font-bold rounded-[4px] cursor-pointer"
-                        >
-                          Salvar
-                        </button>
-                        <button
-                          onClick={() => setEditingPriceId(null)}
-                          className="px-2 py-1 bg-zinc-800 text-white text-[10px] rounded-[4px] cursor-pointer"
-                        >
-                          X
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex justify-between items-center w-full">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-chivo font-black text-white text-[13.5px]">
-                            {p.price}
-                          </span>
-                          {isOwnProfile && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingPriceId(p.id);
-                                setTempPrice(p.price);
-                              }}
-                              className="text-[10px] text-zinc-400 underline hover:text-white cursor-pointer px-1 py-0.5"
-                            >
-                              Editar Preço
-                            </button>
-                          )}
-                        </div>
-                        <span className="text-[9px] text-zinc-500 font-medium">
-                          {p.views || 0} {p.views === 1 ? formatText("Visualização") : formatText("Visualizações")}
+                    <div className="flex justify-between items-center w-full">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-chivo font-black text-white text-[13.5px]">
+                          {p.price}
                         </span>
                       </div>
-                    )}
+                      <span className="text-[9px] text-zinc-500 font-medium">
+                        {p.views || 0} {p.views === 1 ? formatText("Visualização") : formatText("Visualizações")}
+                      </span>
+                    </div>
                   </div>
                 </div>
 

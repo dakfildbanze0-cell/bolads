@@ -551,9 +551,9 @@ export default function AnunciarScreen({ userProfile, onBack, onProductCreated }
         </div>
       ) : (
         /* EDIT FORM FIELDS - transparent, no borders, bold white icons, photos left, title right */
-        <div className="w-full max-w-md mx-auto p-[8px] bg-transparent flex flex-col gap-[8px] animate-fade-in font-sans">
+        <div className="w-full max-w-md mx-auto p-[16px] pt-[16px] bg-transparent flex flex-col gap-[16px] animate-fade-in font-sans">
           
-          <div className="flex items-center justify-between pb-[12px] bg-transparent">
+          <div className="flex items-center justify-between pb-[16px] bg-transparent">
             <button
               type="button"
               onClick={() => setUploadStep("media")}
@@ -571,7 +571,7 @@ export default function AnunciarScreen({ userProfile, onBack, onProductCreated }
             </button>
           </div>
 
-          <form id="upload-form" onSubmit={handleSubmit} className="flex flex-col gap-[8px] w-full bg-transparent">
+          <form id="upload-form" onSubmit={handleSubmit} className="flex flex-col gap-[16px] w-full bg-transparent">
             {/* Top row: Left (Photos) & Right (Title) */}
             <div className="flex items-center gap-[12px] w-full bg-transparent">
               {/* Left: Photos 100px height */}

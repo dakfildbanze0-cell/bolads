@@ -40,7 +40,18 @@ export default function PoliciesScreen({ type, onBack }: PoliciesScreenProps) {
              <h2 className="text-xl font-bold text-white">
                {type === "terms" ? "Condições de Utilização" : "Privacidade e Dados"}
              </h2>
-             <p className="text-sm text-zinc-400">Atualizado em 21 de Junho de 2026</p>
+             <div className="flex flex-col gap-[4px] mt-1">
+               <p className="text-xs text-zinc-400">Atualizado em 21 de Junho de 2026</p>
+               <p className="text-xs text-zinc-500 font-mono">
+                 Link:{" "}
+                 <a
+                   href={type === "terms" ? "#termos" : "#privacidade"}
+                   className="text-white hover:underline cursor-pointer"
+                 >
+                   boladas.co.mz/{type === "terms" ? "termos" : "privacidade"}
+                 </a>
+               </p>
+             </div>
           </div>
         </div>
 

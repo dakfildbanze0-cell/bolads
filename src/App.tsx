@@ -50,6 +50,7 @@ import SplashScreen from "./components/SplashScreen";
 import AnunciarScreen from "./components/AnunciarScreen";
 import OnboardingScreen from "./components/OnboardingScreen";
 import MenuScreen from "./components/MenuScreen";
+import LandingScreen from "./components/LandingScreen";
 import BugsScreen from "./components/BugsScreen";
 import DenunciasScreen from "./components/DenunciasScreen";
 import InstallPWA from "./components/InstallPWA";
@@ -101,6 +102,8 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
+  const [policyType, setPolicyType] = useState<"terms" | "privacy" | null>(null);
+  const [policiesBackScreen, setPoliciesBackScreen] = useState<string>("landing");
   const authCheckedRef = useRef(false);
   const activeScreenRef = useRef(activeScreen);
 
@@ -150,16 +153,28 @@ export default function App() {
         window.location.hash = `product/${selectedProduct.id}`;
       } else if (activeScreen === "profile" && viewingProfileUserId) {
         window.location.hash = `profile/${viewingProfileUserId}`;
+      } else if (activeScreen === "policies" && policyType) {
+        window.location.hash = policyType === "terms" ? "termos" : "privacidade";
       } else {
         window.location.hash = activeScreen;
       }
     }
-  }, [activeScreen, selectedProduct, viewingProfileUserId]);
+  }, [activeScreen, selectedProduct, viewingProfileUserId, policyType]);
 
   useEffect(() => {
     const handleHashChange = async () => {
       const hash = window.location.hash.replace("#", "");
       if (hash && hash !== activeScreenRef.current && hash !== `product/${selectedProduct?.id}` && hash !== `profile/${viewingProfileUserId}`) {
+        if (hash === "termos") {
+          setPolicyType("terms");
+          setActiveScreen("policies");
+          return;
+        } else if (hash === "privacidade") {
+          setPolicyType("privacy");
+          setActiveScreen("policies");
+          return;
+        }
+
         if (hash.startsWith("product/")) {
           const productId = hash.split("/")[1];
           if (productId) {
@@ -185,7 +200,7 @@ export default function App() {
         
         const validScreens = [
           "feed", "alerts", "chat", "profile", "showcase", "following", "settings", 
-          "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies", "search", "product_detail", "onboarding"
+          "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies", "search", "product_detail", "onboarding", "termos", "privacidade"
         ];
         if (validScreens.includes(hash)) {
           setActiveScreen(hash);
@@ -242,10 +257,10 @@ export default function App() {
       setIsLoggedIn(!!currentUser);
 
       if (event === 'SIGNED_OUT') {
-        const publicScreens = ["signin", "signup", "recovery", "onboarding"];
+        const publicScreens = ["landing", "signin", "signup", "recovery", "onboarding"];
         if (!publicScreens.includes(activeScreenRef.current)) {
           console.log("[AUTH] Logout detectado, redirecionando para Login");
-          setActiveScreen("signin");
+          setActiveScreen("landing");
         }
       }
 
@@ -261,9 +276,9 @@ export default function App() {
 
   useEffect(() => {
     // Redirection protection
-    const publicScreens = ["signin", "signup", "recovery", "onboarding", "policies"];
+    const publicScreens = ["landing", "signin", "signup", "recovery", "onboarding", "policies"];
     if (authChecked && !isLoggedIn && !publicScreens.includes(activeScreen)) {
-      setActiveScreen("signin");
+      setActiveScreen("landing");
     }
   }, [activeScreen, isLoggedIn, authChecked]);
 
@@ -271,10 +286,10 @@ export default function App() {
     const initialHash = window.location.hash.replace("#", "");
     const validScreens = [
       "feed", "alerts", "chat", "profile", "showcase", "following", "settings", 
-      "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies", "search", "product_detail", "onboarding"
+      "landing", "signin", "signup", "recovery", "anunciar", "bugs", "denuncias", "menu", "policies", "search", "product_detail", "onboarding", "termos", "privacidade"
     ];
     if (initialHash && (validScreens.includes(initialHash) || initialHash.startsWith("product/") || initialHash.startsWith("profile/"))) {
-      const isPublic = ["signin", "signup", "recovery", "onboarding", "policies"].includes(initialHash) || initialHash.startsWith("product/") || initialHash.startsWith("profile/");
+      const isPublic = ["landing", "signin", "signup", "recovery", "onboarding", "policies", "termos", "privacidade"].includes(initialHash) || initialHash.startsWith("product/") || initialHash.startsWith("profile/");
       if (isLoggedIn || isPublic) {
         // activeScreen is handled by handleHashChange, so we just hide splash
         setShowSplash(false);
@@ -285,7 +300,7 @@ export default function App() {
     if (isLoggedIn) {
       setActiveScreen("feed");
     } else {
-      setActiveScreen("signin");
+      setActiveScreen("landing");
     }
     setShowSplash(false);
   };
@@ -296,7 +311,6 @@ export default function App() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [settingsSubView, setSettingsSubView] = useState<string | null>(null);
-  const [policyType, setPolicyType] = useState<"terms" | "privacy" | null>(null);
   const [activeFCMToast, setActiveFCMToast] = useState<{ senderName: string; text: string } | null>(null);
 
   useEffect(() => {
@@ -458,7 +472,7 @@ export default function App() {
       if (activeScreen !== "onboarding") {
         setActiveScreen("onboarding");
       }
-    } else if (activeScreen === "signin" || activeScreen === "signup" || activeScreen === "onboarding") {
+    } else if (activeScreen === "landing" || activeScreen === "signin" || activeScreen === "signup" || activeScreen === "onboarding") {
       setActiveScreen("feed");
     }
   }, [user, userProfile, activeScreen]);
@@ -779,8 +793,8 @@ export default function App() {
     { id: "recovery", name: "Recuperar acesso", category: "Portais de acesso", icon: RefreshCw },
   ];
 
-  const isHeaderHidden = activeScreen === "bugs" || activeScreen === "denuncias" || activeScreen === "chat" || activeScreen === "anunciar" || activeScreen === "signin" || activeScreen === "signup" || activeScreen === "recovery" || activeScreen === "onboarding" || activeScreen === "profile" || activeScreen === "settings" || activeScreen === "policies" || activeScreen === "alerts" || activeScreen === "menu";
-  const isSidebarHidden = activeScreen === "signin" || activeScreen === "signup" || activeScreen === "recovery" || activeScreen === "onboarding";
+  const isHeaderHidden = activeScreen === "landing" || activeScreen === "bugs" || activeScreen === "denuncias" || activeScreen === "chat" || activeScreen === "anunciar" || activeScreen === "signin" || activeScreen === "signup" || activeScreen === "recovery" || activeScreen === "onboarding" || activeScreen === "profile" || activeScreen === "settings" || activeScreen === "policies" || activeScreen === "alerts" || activeScreen === "menu";
+  const isSidebarHidden = activeScreen === "landing" || activeScreen === "signin" || activeScreen === "signup" || activeScreen === "recovery" || activeScreen === "onboarding" || activeScreen === "policies";
 
   return (
     <div className="bg-zinc-900 min-h-screen text-white font-hanken antialiased relative">
@@ -793,7 +807,7 @@ export default function App() {
       {/* 1. Header (Fixed top, h-12 [48px] height) - No borders, no local background - Hidden on chat, anunciar, signin, signup, recovery screens */}
       {!isHeaderHidden && (
         <header className="fixed top-0 left-0 right-0 h-12 bg-zinc-900 flex items-center z-50 border-b border-zinc-800/20">
-          <div className="w-full max-w-7xl mx-auto flex items-center justify-between px-3 h-full">
+          <div className="w-full max-w-7xl mx-auto flex items-center justify-between px-[16px] h-full">
             {isSearchFocused ? (
               /* Global Search Bar Active Layout */
               <div className="flex items-center w-full gap-[8px] h-full animate-fade-in">
@@ -870,9 +884,9 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Central Top Search Bar (Desktop only, with 1.5px border, 8px rounded corners and subtle grey background) */}
-                <div className="hidden md:flex relative flex-1 max-w-sm border-[1.5px] border-zinc-800 rounded-[8px] bg-zinc-900/60 flex items-center px-4 py-[3px] transition-all focus-within:border-zinc-700 mx-5">
-                  <Search className="w-4 h-4 text-white shrink-0 mr-[5px]" strokeWidth={3.5} />
+                {/* Central Top Search Bar (Desktop only, grey, borderless, thicker) */}
+                <div className="hidden md:flex relative flex-1 max-w-sm border-none rounded-[10px] bg-zinc-800 flex items-center px-4 py-[8px] transition-all focus-within:bg-zinc-750 mx-[8px]">
+                  <Search className="w-4 h-4 text-zinc-300 shrink-0 mr-[8px]" strokeWidth={2.5} />
                   <input
                     type="text"
                     value={searchQuery}
@@ -882,16 +896,16 @@ export default function App() {
                         setActiveScreen("feed");
                       }
                     }}
-                    placeholder="O Que Você Está Procurando?"
-                    className="w-full bg-transparent border-none text-white text-[13px] focus:outline-none placeholder-white/80 font-hanken font-bold placeholder:font-bold py-0.5"
+                    placeholder="O que você está procurando?"
+                    className="w-full bg-transparent border-none text-white text-[14px] focus:outline-none placeholder-zinc-400 font-hanken font-bold py-0.5"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery("")}
-                      className="text-zinc-[500] hover:text-white transition-colors cursor-pointer ml-1"
+                      className="text-zinc-[400] hover:text-white transition-colors cursor-pointer ml-[8px]"
                       title="Limpar"
                     >
-                      <X className="w-4 h-4 text-zinc-500" />
+                      <X className="w-4 h-4 text-zinc-400" />
                     </button>
                   )}
                 </div>
@@ -949,10 +963,10 @@ export default function App() {
       )}
 
       {/* 2. Responsive Side-by-Side Main Layout Grid (Capped to max-7xl) - strict 5px column gap */}
-      <div className={`w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-[5px] transition-all duration-300 ${isHeaderHidden ? "pt-1 md:pt-2" : "pt-12"} min-h-screen ${isSidebarHidden ? "justify-center" : ""}`}>
+      <div className={`w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-[5px] transition-all duration-300 ${isHeaderHidden ? "pt-[16px]" : "pt-[64px]"} min-h-screen ${isSidebarHidden ? "justify-center" : ""} px-[16px]`}>
         {/* Left Sticky Sidebar for Desktop Viewports */}
         {!isSidebarHidden && !isLeftSidebarCollapsed && (
-          <aside className={`hidden md:flex w-64 shrink-0 flex-col gap-[5px] self-start sticky ${isHeaderHidden ? "top-1 h-[calc(100vh-10px)]" : "top-12 h-[calc(100vh-48px)]"} overflow-y-auto no-scrollbar p-[5px]`}>
+          <aside className={`hidden md:flex w-64 shrink-0 flex-col gap-[5px] self-start sticky ${isHeaderHidden ? "top-[16px] h-[calc(100vh-32px)]" : "top-[64px] h-[calc(100vh-80px)]"} overflow-y-auto no-scrollbar p-[5px]`}>
           {/* Sidebar Navigation Items list - strict 5px vertical separation */}
           <div className="flex flex-col gap-[5px]">
             {/* Top Items (with background) */}
@@ -1270,7 +1284,17 @@ export default function App() {
           )}
 
           {activeScreen === "policies" && policyType && (
-            <PoliciesScreen type={policyType} onBack={() => setActiveScreen("signin")} />
+            <PoliciesScreen type={policyType} onBack={() => setActiveScreen(policiesBackScreen)} />
+          )}
+          {activeScreen === "landing" && (
+            <LandingScreen 
+              onNavigate={setActiveScreen} 
+              onOpenPolicies={(type) => {
+                setPolicyType(type);
+                setPoliciesBackScreen("landing");
+                setActiveScreen("policies");
+              }}
+            />
           )}
           {activeScreen === "signin" && (
             <SignInScreen
@@ -1282,6 +1306,7 @@ export default function App() {
               onGoToRecovery={() => setActiveScreen("recovery")}
               onOpenPolicies={(type) => {
                 setPolicyType(type);
+                setPoliciesBackScreen("signin");
                 setActiveScreen("policies");
               }}
             />
@@ -1291,6 +1316,7 @@ export default function App() {
                onGoToLogin={() => setActiveScreen("signin")} 
                onOpenPolicies={(type) => {
                  setPolicyType(type);
+                 setPoliciesBackScreen("signup");
                  setActiveScreen("policies");
                }}
             />
@@ -1302,7 +1328,7 @@ export default function App() {
 
         {/* Right Sticky Sidebar for Desktop Viewports */}
         {!isSidebarHidden && (
-          <aside className={`hidden lg:flex w-64 md:w-72 shrink-0 flex-col gap-[8px] self-start sticky ${isHeaderHidden ? "top-1 h-[calc(100vh-10px)]" : "top-12 h-[calc(100vh-48px)]"} overflow-y-auto no-scrollbar p-[5px]`}>
+          <aside className={`hidden lg:flex w-64 md:w-72 shrink-0 flex-col gap-[8px] self-start sticky ${isHeaderHidden ? "top-[16px] h-[calc(100vh-32px)]" : "top-[64px] h-[calc(100vh-80px)]"} overflow-y-auto no-scrollbar p-[5px]`}>
             <div className="bg-zinc-950 p-[12px] rounded-[10px] flex flex-col gap-[5px] border border-zinc-800/10 shadow-lg">
               <h3 className="font-hanken text-[12px] font-bold tracking-wider text-zinc-400 capitalize">
                 {(() => {

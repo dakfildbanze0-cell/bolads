@@ -236,11 +236,6 @@ export default function FeedScreen({
             </div>
         </div>
 
-      {/* Google Custom Search Engine */}
-      <div className="w-full my-[5px] rounded-[8px] overflow-hidden">
-        <div className="gcse-search"></div>
-      </div>
-
       {/* Sales Feed List */}
       {sortByViews && (
         <div className="flex items-center justify-between px-2 py-1.5 bg-zinc-950 border border-zinc-800 rounded-[8px] select-none">
