@@ -18,7 +18,7 @@ export default defineConfig(() => {
           name: 'Boladas - O Maior Marketplace',
           short_name: 'Boladas',
           description: 'Marketplace moderno para comprar e vender produtos em Moçambique.',
-          theme_color: '#E91E63',
+          theme_color: '#000000',
           background_color: '#000000',
           display: 'standalone',
           icons: [

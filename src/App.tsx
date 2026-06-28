@@ -837,6 +837,15 @@ export default function App() {
               /* Standard Header Layout */
               <>
                 <div className="flex items-center gap-[8px]">
+                  {/* Menu Button (Mobile Only) */}
+                  <button 
+                    onClick={() => setActiveScreen("menu")}
+                    className="flex md:hidden items-center justify-center w-8 h-8 rounded-[8px] hover:bg-zinc-800 text-white transition-all cursor-pointer shadow-none"
+                    title="Menu"
+                  >
+                    <Menu className="w-6 h-6" />
+                  </button>
+                  
                   <div className="flex items-center h-[30px] select-none">
                     <img
                       src="/logo-top.pnp.png"
@@ -889,6 +898,24 @@ export default function App() {
 
                 {/* Right side placeholder */}
                 <div className="flex items-center gap-[8px]">
+                  {/* Following Icon (Mobile Only) */}
+                  <button 
+                    onClick={() => setActiveScreen("following")}
+                    className="flex md:hidden items-center justify-center w-8 h-8 rounded-[8px] hover:bg-zinc-800 text-white transition-all cursor-pointer shadow-none"
+                    title="Seguindo"
+                  >
+                    <Users className="w-6 h-6" />
+                  </button>
+
+                  {/* Search Icon (Mobile Only) */}
+                  <button 
+                    onClick={() => setIsSearchFocused(true)}
+                    className="flex md:hidden items-center justify-center w-8 h-8 rounded-[8px] hover:bg-zinc-800 text-white transition-all cursor-pointer shadow-none"
+                    title="Pesquisar"
+                  >
+                    <Search className="w-6 h-6" />
+                  </button>
+
                   <a
                     href="#anunciar"
                     onClick={(e) => {
